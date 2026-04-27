@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cookie;
 
 class AuthController extends Controller
 {
@@ -43,6 +45,8 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+
+         try {
         $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -56,15 +60,32 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('personal-access-token')->accessToken;
+    $tokenName = config('auth.token_name', 'access_token');
 
-        return response()->json([
-            'success' => true,
+    $token = $user->createToken($tokenName);
+
+
+    return response()
+        ->json([
             'message' => 'User logged in successfully',
-            'user' => $user,
-            'token' => $token,
+            'name' => $user->name,
+            'personal_id' => $user->personal_id,
             'token_type' => 'Bearer',
-        ]);
+        ])
+        ->withCookie(
+            Cookie::make(
+                $tokenName,
+                $token->accessToken,
+                60 * 24, 
+            )
+        );
+   
+        } catch (\Exception $e) {
+            Log::error('Error in AuthController: getUserDetails function: ' . $e->getMessage());
+      
+        }
+
+
     }
 
         /**
