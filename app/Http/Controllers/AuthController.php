@@ -18,27 +18,35 @@ class AuthController extends Controller
     public function register(Request $request)
     {
     try {
-            $validated = $request->validate([
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'email', 'unique:users,email'],
-                'personal_id' => ['required', 'string', 'unique:users,personal_id'],
-                'phone' => ['required', 'string', 'max:20'],
-                'password' => ['required', 'string', 'min:6'],
-            ]);
+       $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'personal_id' => ['required', 'string', 'unique:users,personal_id'],
+            'phone' => ['required', 'string', 'max:20'],
+            'password' => ['required', 'string', 'min:6'],
+        ]);
 
-            $validated['password'] = Hash::make($validated['password']);
+        $validated['password'] = Hash::make($validated['password']);
 
-            $user = User::create($validated);
+        $user = User::create($validated);
 
-            $token = $user->createToken('personal-access-token');
+        $tokenName = config('auth.token_name', 'access_token');
+        $token = $user->createToken($tokenName);
 
-            return response()->json([
-             
+        return response()
+            ->json([
                 'message' => 'User registered successfully',
-                'user' => $user,
-                'token' => $token->accessToken,
+                'name' => $user->name,
+                'personal_id' => $user->personal_id,
                 'token_type' => 'Bearer',
-            ], Response::HTTP_CREATED);
+            ], Response::HTTP_CREATED)
+            ->withCookie(
+                Cookie::make(
+                    $tokenName,
+                    $token->accessToken,
+                    60 * 24
+                )
+            );
 
         } catch (\Throwable $e) {
             Log::error('Register error: ' . $e->getMessage());
