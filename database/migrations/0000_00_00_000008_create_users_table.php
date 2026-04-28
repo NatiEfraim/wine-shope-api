@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('personal_id')->unique();
             $table->string('phone');
             $table->string('password');
+            $table->boolean('is_deleted')->default('0');
             $table->timestamps();
         });
 

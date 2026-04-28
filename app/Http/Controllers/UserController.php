@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends Controller
 {
@@ -13,9 +15,18 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::all();
+              try {
+            $users = User::where('is_deleted', false)->get();
 
-        return response()->json($users);
+            return response()->json($users, Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            Log::error('User index error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Failed to fetch users',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -23,15 +34,26 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        $user = User::find($id);
+          try {
+            $user = User::where('is_deleted', false)
+                ->where('id', $id)
+                ->first();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not found'
+                ], Response::HTTP_NOT_FOUND);
+            }
+
+            return response()->json($user, Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            Log::error('User show error: ' . $e->getMessage());
+
             return response()->json([
-                'message' => 'User not found'
-            ], 404);
+                'message' => 'Failed to fetch user',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        return response()->json($user);
     }
 
        /**
@@ -39,16 +61,11 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'personal_id' => 'required|string|unique:users,personal_id',
-            'phone' => 'required|string'
-        ]);
+        try {
+       $validated = $request->validated();
 
         $user = User::create($validated);
 
-        // Optional: Passport token (you asked for personal access token)
         $token = $user->createToken('api-token')->accessToken;
 
         return response()->json([
@@ -56,7 +73,15 @@ class UserController extends Controller
             'message' => 'User created successfully',
             'data' => $user,
             'token' => $token
-        ], 201);
+        ], Response::HTTP_CREATED);
+
+        } catch (\Throwable $e) {
+            Log::error('User store error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Failed to create user',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -64,29 +89,32 @@ class UserController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $user = User::find($id);
+        try {
+        $user = User::where('is_deleted', false)
+            ->where('id', $id)
+            ->first();
 
         if (!$user) {
             return response()->json([
-                'success' => false,
                 'message' => 'User not found'
-            ], 404);
+            ], Response::HTTP_NOT_FOUND);
         }
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $id,
-            'personal_id' => 'sometimes|string|unique:users,personal_id,' . $id,
-            'phone' => 'sometimes|string'
-        ]);
-
-        $user->update($validated);
+        $user->update($request->validated());
 
         return response()->json([
             'success' => true,
             'message' => 'User updated successfully',
             'data' => $user
-        ]);
+        ], Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            Log::error('User update error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Failed to update user',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -94,21 +122,31 @@ class UserController extends Controller
      */
     public function destroy($id)
     {
-        $user = User::find($id);
+        try {
+            $user = User::where('is_deleted', false)
+                ->where('id', $id)
+                ->first();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not found'
+                ], Response::HTTP_NOT_FOUND);
+            }
+
+            $user->update(['is_deleted' => true]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
+                'success' => true,
+                'message' => 'User deleted successfully'
+            ], Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            Log::error('User delete error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Failed to delete user',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $user->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User deleted successfully'
-        ]);
     }
     
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,16 +17,11 @@ class AuthController extends Controller
     /**
      * POST /api/auth/register
      */
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
     try {
-       $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'personal_id' => ['required', 'string', 'unique:users,personal_id'],
-            'phone' => ['required', 'string', 'max:20'],
-            'password' => ['required', 'string', 'min:6'],
-        ]);
+
+            $validated = $request->validated();
 
         $validated['password'] = Hash::make($validated['password']);
 
@@ -48,6 +45,7 @@ class AuthController extends Controller
                 )
             );
 
+
         } catch (\Throwable $e) {
             Log::error('Register error: ' . $e->getMessage());
 
@@ -61,41 +59,37 @@ class AuthController extends Controller
         /**
      * POST /api/auth/login
      */
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
 
  try {
-            $validated = $request->validate([
-                'email' => ['required', 'email'],
-                'password' => ['required', 'string'],
-            ]);
+        $validated = $request->validated();
 
-            $user = User::where('email', $validated['email'])->first();
+        $user = User::where('email', $validated['email'])->first();
 
-            if (!$user || !Hash::check($validated['password'], $user->password)) {
-                return response()->json([
-                  
-                    'message' => 'Invalid credentials',
-                ], Response::HTTP_UNAUTHORIZED);
-            }
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'message' => 'Invalid credentials',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
 
-            $tokenName = config('auth.token_name', 'access_token');
-            $token = $user->createToken($tokenName);
+        $tokenName = config('auth.token_name', 'access_token');
+        $token = $user->createToken($tokenName);
 
-            return response()
-                ->json([
-                    'message' => 'User logged in successfully',
-                    'name' => $user->name,
-                    'personal_id' => $user->personal_id,
-                    'token_type' => 'Bearer',
-                ], Response::HTTP_OK)
-                ->withCookie(
-                    Cookie::make(
-                        $tokenName,
-                        $token->accessToken,
-                        60 * 24, 
-                    )
-                );
+        return response()
+            ->json([
+                'message' => 'User logged in successfully',
+                'name' => $user->name,
+                'personal_id' => $user->personal_id,
+                'token_type' => 'Bearer',
+            ], Response::HTTP_OK)
+            ->withCookie(
+                Cookie::make(
+                    $tokenName,
+                    $token->accessToken,
+                    60 * 24
+                )
+            );
 
         } catch (\Throwable $e) {
             Log::error('Login error: ' . $e->getMessage());
