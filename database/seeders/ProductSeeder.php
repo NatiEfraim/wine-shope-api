@@ -15,11 +15,11 @@ class ProductSeeder extends Seeder
     {
         //
          $products = [
-            [
+       [
                 'name' => 'Cabernet Sauvignon',
                 'description' => 'Rich red wine with blackcurrant flavors',
                 'price' => 120,
-                'discount' => 99,
+                'discount' => 20, // 20%
                 'quantity' => 50,
             ],
             [
@@ -33,14 +33,14 @@ class ProductSeeder extends Seeder
                 'name' => 'Chardonnay',
                 'description' => 'Dry white wine with citrus notes',
                 'price' => 110,
-                'discount' => 90,
+                'discount' => 15, // 15%
                 'quantity' => 40,
             ],
             [
                 'name' => 'Rosé Wine',
                 'description' => 'Light and refreshing pink wine',
                 'price' => 85,
-                'discount' => null,
+                'discount' => 10, // 10%
                 'quantity' => 25,
             ],
         ];

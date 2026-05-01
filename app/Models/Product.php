@@ -23,5 +23,37 @@ class Product extends Model
         'discount' => 'decimal:2',
         'is_active' => 'boolean',
         'is_deleted' => 'boolean',
+        'created_at' => 'datetime:Y-m-d H:i',
+        'updated_at' => 'datetime:Y-m-d H:i',
     ];
+
+    
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+ 'is_deleted',
+    ];
+
+        /**
+     * This tells Laravel to ADD this field to JSON response
+     */
+    protected $appends = ['price_after_discount'];
+
+    /**
+     * Accessor (calculated field)
+     */
+    public function getPriceAfterDiscountAttribute()
+    {
+        if (!$this->discount) {
+            return (float) $this->price;
+        }
+
+        return round(
+            $this->price * (1 - $this->discount / 100),
+            2
+        );
+    }
 }
