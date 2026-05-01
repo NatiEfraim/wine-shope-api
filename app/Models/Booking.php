@@ -22,6 +22,20 @@ class Booking extends Model
         'updated_at' => 'datetime:Y-m-d H:i',
     ];
 
+
+    
+    protected static function booted()
+    {
+        static::created(function (Booking $booking) {
+             if (empty($booking->serial_number)) {
+            $booking->forceFill([
+                'serial_number' => rand(100, 999) . $booking->id,
+            ])->saveQuietly();
+        }
+        });
+    }
+
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -32,7 +46,7 @@ class Booking extends Model
         return $this->belongsTo(Status::class);
     }
 
-    public function item()
+    public function items()
     {
         return $this->hasMany(BookingItem::class);
     }

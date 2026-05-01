@@ -10,7 +10,7 @@ class Status extends Model
         protected $fillable = [
         'name',
     ];
-    public function booking()
+    public function bookings()
     {
         return $this->hasMany(Booking::class);
     }

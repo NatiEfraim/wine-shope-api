@@ -31,8 +31,7 @@ class BookingSeeder extends Seeder
             $status = $statuses->random();
 
             $booking = Booking::create([
-                // Your Booking booted() function will generate it automatically.
-                'serial_number' => null,
+                'serial_number' => rand(1000, 9999),
                 'user_id' => $user->id,
                 'status_id' => $status->id,
                 'total_price' => 0,
