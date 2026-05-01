@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enum\RoleEnum;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Auth;
+
 
 class AuthController extends Controller
 {
@@ -134,4 +137,47 @@ class AuthController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+ * POST /api/auth/user
+ */
+public function user(Request $request)
+{
+    try {
+
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthorized',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $user->load('roles');
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'personal_id' => $user->personal_id,
+                'phone' => $user->phone,
+                'role' => $user->roles->map(function ($role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => RoleEnum::labelFromId($role->id),
+                    ];
+                })->values(),
+            ],
+        ], Response::HTTP_OK);
+
+    } catch (\Throwable $e) {
+        dd($e->getMessage());
+        Log::error('Auth user error: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to fetch authenticated user',
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
 }

@@ -11,9 +11,12 @@ Route::controller(AuthController::class)
     ->group(function () {
         Route::post('/register', 'register');
         Route::post('/login', 'login');
-
         Route::post('/logout', 'logout')->middleware('auth:api');
+        Route::get('/user', 'user')->middleware('auth:api');
     });
+
+
+
 
 Route::middleware('auth:api')->group(function () {
     Route::controller(UserController::class)
