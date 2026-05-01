@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Enum\RoleEnum;
+use App\Http\Requests\StoreUserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Hash;
+
 
 class UserController extends Controller
 {
@@ -56,28 +61,56 @@ class UserController extends Controller
         }
     }
 
+    /**
+ * GET /api/users/roles
+ */
+public function roles()
+{
+    try {
+        $roles = Role::where('guard_name', 'passport')
+            ->get()
+            ->map(function ($role) {
+                return [
+                    'id' => $role->id,
+                    'name' => RoleEnum::labelFromId($role->id),
+                ];
+            });
+
+        return response()->json($roles, Response::HTTP_OK);
+
+    } catch (\Throwable $e) {
+        Log::error('Roles fetch error: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to fetch roles',
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+
        /**
      * POST /api/users
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        try {
-       $validated = $request->validated();
+    try {
 
+       $validated = $request->all();
+       $roleId = $validated['role_id'];
+       unset($validated['role_id']);
+        $validated['password'] = Hash::make($validated['personal_id']);
         $user = User::create($validated);
-
-        $token = $user->createToken('api-token')->accessToken;
-
+        $user->assignRole($roleId);
+        
+        $tokenName = config('auth.token_name', 'access_token');
+        $token = $user->createToken($tokenName)->accessToken;
         return response()->json([
-            'success' => true,
             'message' => 'User created successfully',
             'data' => $user,
-            'token' => $token
+            // 'token' => $token
         ], Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             Log::error('User store error: ' . $e->getMessage());
-
             return response()->json([
                 'message' => 'Failed to create user',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);

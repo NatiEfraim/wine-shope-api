@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\ChangePasswordRequest;
+
 
 
 class AuthController extends Controller
@@ -29,6 +31,7 @@ class AuthController extends Controller
         $validated['password'] = Hash::make($validated['password']);
 
         $user = User::create($validated);
+        $user->assignRole(RoleEnum::USER->value);
 
         $tokenName = config('auth.token_name', 'access_token');
         $token = $user->createToken($tokenName);
@@ -38,7 +41,7 @@ class AuthController extends Controller
                 'message' => 'User registered successfully',
                 'name' => $user->name,
                 'personal_id' => $user->personal_id,
-                'token_type' => 'Bearer',
+                // 'token_type' => 'Bearer',
             ], Response::HTTP_CREATED)
             ->withCookie(
                 Cookie::make(
@@ -84,7 +87,7 @@ class AuthController extends Controller
                 'message' => 'User logged in successfully',
                 'name' => $user->name,
                 'personal_id' => $user->personal_id,
-                'token_type' => 'Bearer',
+                // 'token_type' => 'Bearer',
             ], Response::HTTP_OK)
             ->withCookie(
                 Cookie::make(
@@ -96,15 +99,44 @@ class AuthController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('Login error: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Login failed',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-
     }
+
+    /**
+ * POST /api/auth/change-password
+ */
+public function changePassword(ChangePasswordRequest $request)
+{
+    try {
+
+        $user = Auth::user();
+
+        if (!Hash::check($request->old_password, $user->password)) {
+            return response()->json([
+                'message' => 'Old password is incorrect',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return response()->json([
+            'message' => 'Password changed successfully',
+        ], Response::HTTP_OK);
+
+    } catch (\Throwable $e) {
+        Log::error('Change password error: ' . $e->getMessage());
+        return response()->json([
+            'message' => 'Failed to change password',
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
 
         /**
      * POST /api/auth/logout
