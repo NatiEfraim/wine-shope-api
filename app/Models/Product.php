@@ -56,4 +56,9 @@ class Product extends Model
             2
         );
     }
+
+    public function bookingItem()
+{
+    return $this->hasMany(BookingItem::class);
+}
 }
