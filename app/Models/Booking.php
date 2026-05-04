@@ -22,7 +22,9 @@ class Booking extends Model
         'updated_at' => 'datetime:Y-m-d H:i',
     ];
 
-
+        protected $hidden = [
+ 'is_deleted',
+    ];
     
     protected static function booted()
     {

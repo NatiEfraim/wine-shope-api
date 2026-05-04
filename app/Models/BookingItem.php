@@ -22,7 +22,10 @@ class BookingItem extends Model
         'created_at' => 'datetime:Y-m-d H:i',
         'updated_at' => 'datetime:Y-m-d H:i',
     ];
-
+        protected $hidden = [
+ 'created_at',
+ 'updated_at',
+    ];
     public function booking()
     {
         return $this->belongsTo(Booking::class);

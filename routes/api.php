@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\StorageController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,14 +35,14 @@ Route::middleware(['auth:api','role:admin'])->group(function () {
         });
 });
 
-Route::middleware(['auth:api','role:admin|moderator'])->controller(ProductController::class)
+Route::middleware(['auth:api','role:admin|moderator|user'])->controller(ProductController::class)
     ->prefix('products')
     ->group(function () {
-        Route::post('/', 'store');
+        Route::post('/', 'store')->middleware(['role:admin|moderator']);
         Route::get('/', 'index');
         Route::get('/{id}', 'show');
-        Route::put('/{id}', 'update');
-        Route::delete('/{id}', 'destroy');
+        Route::put('/{id}', 'update')->middleware(['role:admin|moderator']);
+        Route::delete('/{id}', 'destroy')->middleware(['role:admin|moderator']);
     });
 
     Route::middleware('auth:api')
@@ -55,4 +56,10 @@ Route::middleware(['auth:api','role:admin|moderator'])->controller(ProductContro
             Route::put('/{id}', 'update');
             Route::delete('/{id}', 'destroy');
         });
+    });
+
+    Route::prefix('storage-service')
+    ->controller(StorageController::class)
+    ->group(function () {
+        Route::get('/', 'logToS3');
     });

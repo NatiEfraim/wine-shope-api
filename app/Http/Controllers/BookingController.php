@@ -82,7 +82,7 @@ public function store(StoreBookingRequest $request)
 
         return response()->json([
             'message' => 'Booking created successfully',
-            'data' => $booking,
+            // 'data' => $booking,
         ], Response::HTTP_CREATED);
 
     } catch (\Throwable $e) {
