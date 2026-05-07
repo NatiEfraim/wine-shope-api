@@ -14,40 +14,41 @@ class ProductSeeder extends Seeder
     public function run(): void
     {
         //
-        $products = [
-            ['name' => 'Cabernet Sauvignon', 'description' => 'Rich red wine with blackcurrant flavors', 'price' => 120, 'discount' => 20, 'quantity' => 50],
-            ['name' => 'Merlot', 'description' => 'Soft and fruity red wine', 'price' => 95, 'discount' => null, 'quantity' => 30],
-            ['name' => 'Chardonnay', 'description' => 'Dry white wine with citrus notes', 'price' => 110, 'discount' => 15, 'quantity' => 40],
-            ['name' => 'Rosé Wine', 'description' => 'Light and refreshing pink wine', 'price' => 85, 'discount' => 10, 'quantity' => 25],
-            ['name' => 'Pinot Noir', 'description' => 'Elegant red wine with cherry aromas', 'price' => 130, 'discount' => 12, 'quantity' => 35],
-            ['name' => 'Sauvignon Blanc', 'description' => 'Fresh white wine with tropical fruit notes', 'price' => 90, 'discount' => null, 'quantity' => 45],
-            ['name' => 'Shiraz', 'description' => 'Bold red wine with spicy finish', 'price' => 140, 'discount' => 18, 'quantity' => 28],
-            ['name' => 'Malbec', 'description' => 'Deep red wine with plum and cocoa flavors', 'price' => 115, 'discount' => 8, 'quantity' => 32],
-            ['name' => 'Gewürztraminer', 'description' => 'Aromatic white wine with floral notes', 'price' => 105, 'discount' => null, 'quantity' => 20],
-            ['name' => 'Riesling', 'description' => 'Semi-dry white wine with apple notes', 'price' => 100, 'discount' => 10, 'quantity' => 38],
+    $products = [
+        ['name' => 'Cabernet Sauvignon', 'description' => 'יין אדום עשיר עם טעמי פירות יער שחורים ודומדמניות', 'price' => 120, 'discount' => 20, 'quantity' => 50],
+        ['name' => 'Merlot', 'description' => 'יין אדום רך ופירותי עם סיומת חלקה', 'price' => 95, 'discount' => null, 'quantity' => 30],
+        ['name' => 'Chardonnay', 'description' => 'יין לבן יבש עם נגיעות הדרים ורעננות', 'price' => 110, 'discount' => 15, 'quantity' => 40],
+        ['name' => 'Rosé Wine', 'description' => 'יין רוזה קליל ומרענן המתאים לקיץ', 'price' => 85, 'discount' => 10, 'quantity' => 25],
+        ['name' => 'Pinot Noir', 'description' => 'יין אדום אלגנטי עם ארומות דובדבן ופירות אדומים', 'price' => 130, 'discount' => 12, 'quantity' => 35],
+        ['name' => 'Sauvignon Blanc', 'description' => 'יין לבן רענן עם טעמים טרופיים וחמיצות עדינה', 'price' => 90, 'discount' => null, 'quantity' => 45],
+        ['name' => 'Shiraz', 'description' => 'יין אדום עוצמתי עם סיומת מתובלת', 'price' => 140, 'discount' => 18, 'quantity' => 28],
+        ['name' => 'Malbec', 'description' => 'יין אדום עמוק עם טעמי שזיף וקקאו', 'price' => 115, 'discount' => 8, 'quantity' => 32],
+        ['name' => 'Gewürztraminer', 'description' => 'יין לבן ארומטי עם ניחוחות פרחוניים', 'price' => 105, 'discount' => null, 'quantity' => 20],
+        ['name' => 'Riesling', 'description' => 'יין לבן חצי יבש עם טעמי תפוח ירוק', 'price' => 100, 'discount' => 10, 'quantity' => 38],
 
-            ['name' => 'Moscato', 'description' => 'Sweet white wine with peach aromas', 'price' => 75, 'discount' => 5, 'quantity' => 60],
-            ['name' => 'Zinfandel', 'description' => 'Fruity red wine with berry taste', 'price' => 125, 'discount' => null, 'quantity' => 22],
-            ['name' => 'Syrah Reserve', 'description' => 'Premium Syrah with oak aging', 'price' => 180, 'discount' => 20, 'quantity' => 15],
-            ['name' => 'White Blend', 'description' => 'Balanced white blend for daily drinking', 'price' => 70, 'discount' => null, 'quantity' => 55],
-            ['name' => 'Red Blend', 'description' => 'Smooth red blend with rich body', 'price' => 88, 'discount' => 10, 'quantity' => 48],
-            ['name' => 'Sparkling Brut', 'description' => 'Dry sparkling wine for celebrations', 'price' => 160, 'discount' => 15, 'quantity' => 18],
-            ['name' => 'Prosecco', 'description' => 'Italian sparkling wine with fruity finish', 'price' => 135, 'discount' => null, 'quantity' => 26],
-            ['name' => 'Port Wine', 'description' => 'Sweet fortified wine', 'price' => 150, 'discount' => 12, 'quantity' => 17],
-            ['name' => 'Dessert Wine', 'description' => 'Sweet dessert wine with honey notes', 'price' => 98, 'discount' => 7, 'quantity' => 33],
-            ['name' => 'Petit Verdot', 'description' => 'Powerful red wine with dark fruit flavors', 'price' => 145, 'discount' => null, 'quantity' => 21],
+        ['name' => 'Moscato', 'description' => 'יין לבן מתוק עם ארומות אפרסק ופירות קיץ', 'price' => 75, 'discount' => 5, 'quantity' => 60],
+        ['name' => 'Zinfandel', 'description' => 'יין אדום פירותי עם טעמי פירות יער', 'price' => 125, 'discount' => null, 'quantity' => 22],
+        ['name' => 'Syrah Reserve', 'description' => 'יין סירה פרימיום שעבר יישון בחביות עץ אלון', 'price' => 180, 'discount' => 20, 'quantity' => 15],
+        ['name' => 'White Blend', 'description' => 'בלנד לבן מאוזן לשתייה יומיומית', 'price' => 70, 'discount' => null, 'quantity' => 55],
+        ['name' => 'Red Blend', 'description' => 'בלנד אדום חלק ובעל גוף עשיר', 'price' => 88, 'discount' => 10, 'quantity' => 48],
+        ['name' => 'Sparkling Brut', 'description' => 'יין מבעבע יבש המתאים לחגיגות ואירועים', 'price' => 160, 'discount' => 15, 'quantity' => 18],
+        ['name' => 'Prosecco', 'description' => 'יין מבעבע איטלקי עם סיומת פירותית', 'price' => 135, 'discount' => null, 'quantity' => 26],
+        ['name' => 'Port Wine', 'description' => 'יין מחוזק ומתוק בעל טעמים עמוקים', 'price' => 150, 'discount' => 12, 'quantity' => 17],
+        ['name' => 'Dessert Wine', 'description' => 'יין קינוח מתוק עם נגיעות דבש', 'price' => 98, 'discount' => 7, 'quantity' => 33],
+        ['name' => 'Petit Verdot', 'description' => 'יין אדום עוצמתי עם טעמי פירות כהים', 'price' => 145, 'discount' => null, 'quantity' => 21],
 
-            ['name' => 'Viognier', 'description' => 'Full-bodied white wine with floral aroma', 'price' => 118, 'discount' => 9, 'quantity' => 29],
-            ['name' => 'Grenache', 'description' => 'Red wine with strawberry and spice notes', 'price' => 108, 'discount' => 6, 'quantity' => 31],
-            ['name' => 'Tempranillo', 'description' => 'Spanish red wine with oak and vanilla notes', 'price' => 122, 'discount' => 11, 'quantity' => 27],
-            ['name' => 'Barbera', 'description' => 'Italian red wine with bright acidity', 'price' => 112, 'discount' => null, 'quantity' => 36],
-            ['name' => 'Chianti', 'description' => 'Classic Italian red wine', 'price' => 128, 'discount' => 13, 'quantity' => 24],
-            ['name' => 'Cava Brut', 'description' => 'Spanish sparkling wine', 'price' => 102, 'discount' => 8, 'quantity' => 42],
-            ['name' => 'Ice Wine', 'description' => 'Sweet premium wine made from frozen grapes', 'price' => 220, 'discount' => 15, 'quantity' => 10],
-            ['name' => 'Organic Red Wine', 'description' => 'Organic dry red wine', 'price' => 135, 'discount' => null, 'quantity' => 19],
-            ['name' => 'Organic White Wine', 'description' => 'Organic dry white wine', 'price' => 125, 'discount' => 10, 'quantity' => 23],
-            ['name' => 'Premium Rosé', 'description' => 'Premium rosé wine with fresh berry notes', 'price' => 155, 'discount' => 14, 'quantity' => 16],
-        ];
+        ['name' => 'Viognier', 'description' => 'יין לבן מלא גוף עם ארומה פרחונית', 'price' => 118, 'discount' => 9, 'quantity' => 29],
+        ['name' => 'Grenache', 'description' => 'יין אדום עם טעמי תות ותבלינים', 'price' => 108, 'discount' => 6, 'quantity' => 31],
+        ['name' => 'Tempranillo', 'description' => 'יין אדום ספרדי עם נגיעות וניל ועץ אלון', 'price' => 122, 'discount' => 11, 'quantity' => 27],
+        ['name' => 'Barbera', 'description' => 'יין אדום איטלקי עם חמיצות מאוזנת', 'price' => 112, 'discount' => null, 'quantity' => 36],
+        ['name' => 'Chianti', 'description' => 'יין אדום איטלקי קלאסי בעל גוף בינוני', 'price' => 128, 'discount' => 13, 'quantity' => 24],
+        ['name' => 'Cava Brut', 'description' => 'יין מבעבע ספרדי יבש ומרענן', 'price' => 102, 'discount' => 8, 'quantity' => 42],
+        ['name' => 'Ice Wine', 'description' => 'יין קינוח יוקרתי מענבים קפואים', 'price' => 220, 'discount' => 15, 'quantity' => 10],
+        ['name' => 'Organic Red Wine', 'description' => 'יין אדום אורגני יבש ואיכותי', 'price' => 135, 'discount' => null, 'quantity' => 19],
+        ['name' => 'Organic White Wine', 'description' => 'יין לבן אורגני יבש ומרענן', 'price' => 125, 'discount' => 10, 'quantity' => 23],
+        ['name' => 'Premium Rosé', 'description' => 'יין רוזה פרימיום עם טעמי פירות יער טריים', 'price' => 155, 'discount' => 14, 'quantity' => 16],
+    ];
+
 
         foreach ($products as $product) {
             Product::create($product);
