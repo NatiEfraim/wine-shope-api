@@ -62,4 +62,7 @@ Route::middleware(['auth:api','role:admin|moderator|user'])->controller(ProductC
     ->controller(StorageController::class)
     ->group(function () {
         Route::get('/', 'logToS3');
+        Route::get('/export-booking', 'exportBookingDataIntoXlsx');
+        Route::get('/export-user', 'exportUsersIntoXlsx');
+        Route::get('/export-product', 'exportProductsIntoXlsx');
     });

@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -14,18 +13,18 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
 
-    $table->string('name');
-    $table->text('description')->nullable();
+            $table->string('name');
+            $table->text('description')->nullable();
 
-    $table->decimal('price', 10, 2);
-    $table->decimal('discount', 10, 2)->nullable();
+            $table->decimal('price', 10, 2);
+            $table->decimal('discount', 10, 2)->nullable();
 
-    $table->integer('quantity')->default(0);
+            $table->integer('quantity')->default(0);
 
-    // $table->string('image')->nullable();
+            // $table->string('image')->nullable();
 
-    $table->boolean('is_active')->default(true);
-    $table->boolean('is_deleted')->default(false);
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_deleted')->default(false);
             $table->timestamps();
         });
     }

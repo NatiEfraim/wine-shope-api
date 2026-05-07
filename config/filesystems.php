@@ -85,7 +85,12 @@ return [
         public_path('storage') => storage_path('app/public'),
     ],
 
+    'storage_service' => env('STORAGE_SERVICE','minio'),
+
     'folder_name' => [
-        'log_folder_name' => (string) env('LOG_FOLDER_NAME', 'logs'),
+        'log_folder' => (string) env('LOG_FOLDER_NAME', 'logs'),
+        'export_booking' => (string) env('EXPORT_BOOKING', 'export-booking'),
+        'export_user' => (string) env('EXPORT_USER', 'export-user'),
+        'export_product' => (string) env('EXPORT_USER', 'export-product'),
     ],
 ];
