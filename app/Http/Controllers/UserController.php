@@ -11,17 +11,16 @@ use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Hash;
 
-
 class UserController extends Controller
 {
-    //
-        /**
+    /**
      * GET /api/users
      */
     public function index()
     {
-              try {
-            $users = User::where('is_deleted', false)->get();
+        try {
+            // Added eager loading of roles to prevent N+1 query problem
+            $users = User::with('roles')->where('is_deleted', false)->get();
 
             return response()->json($users, Response::HTTP_OK);
 
@@ -39,8 +38,8 @@ class UserController extends Controller
      */
     public function show($id)
     {
-          try {
-            $user = User::where('is_deleted', false)
+        try {
+            $user = User::with('roles')->where('is_deleted', false)
                 ->where('id', $id)
                 ->first();
 
@@ -62,52 +61,52 @@ class UserController extends Controller
     }
 
     /**
- * GET /api/users/roles
- */
-public function roles()
-{
-    try {
-        $roles = Role::where('guard_name', 'passport')
-            ->get()
-            ->map(function ($role) {
-                return [
-                    'id' => $role->id,
-                    'name' => RoleEnum::labelFromId($role->id),
-                ];
-            });
+     * GET /api/users/roles
+     */
+    public function roles()
+    {
+        try {
+            $roles = Role::where('guard_name', 'passport')
+                ->get()
+                ->map(function ($role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => RoleEnum::labelFromId($role->id),
+                    ];
+                });
 
-        return response()->json($roles, Response::HTTP_OK);
+            return response()->json($roles, Response::HTTP_OK);
 
-    } catch (\Throwable $e) {
-        Log::error('Roles fetch error: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Roles fetch error: ' . $e->getMessage());
 
-        return response()->json([
-            'message' => 'Failed to fetch roles',
-        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json([
+                'message' => 'Failed to fetch roles',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
-}
 
-       /**
+    /**
      * POST /api/users
      */
     public function store(StoreUserRequest $request)
     {
-    try {
-
-       $validated = $request->all();
-       $roleId = $validated['role_id'];
-       unset($validated['role_id']);
-        $validated['password'] = Hash::make($validated['personal_id']);
-        $user = User::create($validated);
-        $user->assignRole($roleId);
-        
-        $tokenName = config('auth.token_name', 'access_token');
-        $token = $user->createToken($tokenName)->accessToken;
-        return response()->json([
-            'message' => 'User created successfully',
-            'data' => $user,
-            // 'token' => $token
-        ], Response::HTTP_CREATED);
+        try {
+            $validated = $request->all();
+            $roleId = $validated['role_id'];
+            unset($validated['role_id']);
+            $validated['password'] = Hash::make($validated['personal_id']);
+            
+            $user = User::create($validated);
+            $user->assignRole($roleId);
+            
+            $tokenName = config('auth.token_name', 'access_token');
+            $token = $user->createToken($tokenName)->accessToken;
+            
+            return response()->json([
+                'message' => 'User created successfully',
+                'data' => $user,
+            ], Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             Log::error('User store error: ' . $e->getMessage());
@@ -123,23 +122,40 @@ public function roles()
     public function update(Request $request, $id)
     {
         try {
-        $user = User::where('is_deleted', false)
-            ->where('id', $id)
-            ->first();
+            $user = User::where('is_deleted', false)
+                ->where('id', $id)
+                ->first();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not found'
+                ], Response::HTTP_NOT_FOUND);
+            }
+
+            // Basic validation for updatable fields
+            $validated = $request->validate([
+                'name' => 'sometimes|string|max:255',
+                'email' => 'sometimes|email|unique:users,email,' . $id,
+                'role_id' => 'sometimes|integer|exists:roles,id',
+            ]);
+
+            // If a new role ID is sent, synchronize it
+            if (isset($validated['role_id'])) {
+                $user->syncRoles([$validated['role_id']]);
+                unset($validated['role_id']); // Remove from validated data to avoid updating the users table
+            }
+
+            if (!empty($validated)) {
+                $user->update($validated);
+            }
+
+            $user->load('roles');
+
             return response()->json([
-                'message' => 'User not found'
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        $user->update($request->validated());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User updated successfully',
-            'data' => $user
-        ], Response::HTTP_OK);
+                'success' => true,
+                'message' => 'User updated successfully',
+                'data' => $user
+            ], Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('User update error: ' . $e->getMessage());
@@ -181,5 +197,4 @@ public function roles()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-    
 }
