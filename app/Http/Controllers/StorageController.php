@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Enum\RoleEnum;
+
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Booking;
@@ -16,6 +17,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Illuminate\Support\Facades\Hash;
+
 
 class StorageController extends Controller
 {
@@ -209,7 +212,8 @@ class StorageController extends Controller
                 $sheet->setCellValue("B{$row}", $user->email);
                 $sheet->setCellValue("C{$row}", $user->personal_id);
                 $sheet->setCellValue("D{$row}", $user->phone);
-                $sheet->setCellValue("E{$row}", $role ? RoleEnum::labelFromId($role->id) : 'לא קיים');
+                // $sheet->setCellValue("E{$row}", $role ? RoleEnum::labelFromId($role->id) : 'לא קיים');
+                $sheet->setCellValue("E{$row}", $role->id);
 
                 $row++;
             }
@@ -386,7 +390,77 @@ class StorageController extends Controller
         }
     }
 
+public function importUsersFromXlsxBucket(): int
+{
+    try {
+        $diskName = config('filesystems.storage_service');
+
+        $fileName = 'user_' . now()->format('d_m_Y') . '.xlsx';
+
+        $remotePath = 'import-user/' . $fileName;
+        $localPath = storage_path('app/' . $fileName);
+
+        if (!Storage::disk($diskName)->exists($remotePath)) {
+            Log::warning('Import users file not found in bucket: ' . $remotePath);
+            return Response::HTTP_NOT_FOUND;
+        }
+
+        $fileContent = Storage::disk($diskName)->get($remotePath);
+
+        file_put_contents($localPath, $fileContent);
+
+        $spreadsheet = IOFactory::load($localPath);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $rows = $sheet->toArray();
+
+        // Remove header row
+        unset($rows[0]);
+
+        foreach ($rows as $row) {
+            $name = $row[0] ?? null;
+            $personalId = $row[1] ?? null;
+            $phone = $row[2] ?? null;
+            $roleId = $row[3] ?? null;
+            $email = $row[4] ?? null;
+
+            if (!$name || !$personalId || !$phone || !$roleId || !$email) {
+                continue;
+            }
+
+            $role = Role::find($roleId);
+
     
+            $user = User::updateOrCreate(
+                ['personal_id' => $personalId],
+                [
+                    'name' => $name,
+                    'email' => $email,
+                    'phone' => $phone,
+                    'password' => Hash::make($personalId),
+                    'is_deleted' => false,
+                ]
+            );
+
+            $user->syncRoles([$role]);
+        }
+
+        if (file_exists($localPath)) {
+            unlink($localPath);
+        }
+
+        return Response::HTTP_OK;
+
+    } catch (\Throwable $e) {
+        Log::error('Import users from XLSX error: ' . $e->getMessage());
+
+        if (isset($localPath) && file_exists($localPath)) {
+            unlink($localPath);
+        }
+
+        return Response::HTTP_INTERNAL_SERVER_ERROR;
+    }
+}
     /**
      * Upload a local file to the configured storage disk (S3, MinIO, etc.)
      * and optionally delete it locally after upload.
