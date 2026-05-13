@@ -47,7 +47,11 @@ class AuthController extends Controller
                 Cookie::make(
                     $tokenName,
                     $token->accessToken,
-                    60 * 24
+                    60 * 24,
+                    '/', // path
+                    null, // domain
+                    false, // secure
+                    false // httpOnly
                 )
             );
 
@@ -69,20 +73,33 @@ class AuthController extends Controller
     {
 
  try {
+        Log::info('Login request method: ' . $request->method());
+        Log::info('Login request headers: ' . json_encode($request->headers->all()));
+        Log::info('Login attempt for email: ' . $request->email);
         $validated = $request->validated();
+        Log::info('Password received: ' . $validated['password']);
 
         $user = User::where('email', $validated['email'])->first();
+        Log::info('User found: ' . ($user ? 'yes' : 'no'));
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        $passwordCheck = Hash::check($validated['password'], $user->password);
+        Log::info('Password check result: ' . ($passwordCheck ? 'true' : 'false'));
+
+        if (!$user || !$passwordCheck) {
+            Log::info('Invalid credentials for email: ' . $validated['email']);
             return response()->json([
                 'message' => 'Invalid credentials',
             ], Response::HTTP_UNAUTHORIZED);
         }
 
+        Log::info('Login successful for email: ' . $validated['email']);
+
         $tokenName = config('auth.token_name', 'access_token');
         $token = $user->createToken($tokenName);
 
-        return response()
+        Log::info('Token created: ' . $token->accessToken);
+
+        $response = response()
             ->json([
                 'message' => 'User logged in successfully',
                 'name' => $user->name,
@@ -93,9 +110,16 @@ class AuthController extends Controller
                 Cookie::make(
                     $tokenName,
                     $token->accessToken,
-                    60 * 24
+                    60 * 24,
+                    '/', // path
+                    null, // domain
+                    false, // secure
+                    false // httpOnly
                 )
             );
+
+        Log::info('Response status: ' . $response->getStatusCode());
+        return $response;
 
         } catch (\Throwable $e) {
             Log::error('Login error: ' . $e->getMessage());
@@ -159,7 +183,7 @@ public function changePassword(ChangePasswordRequest $request)
                 'message' => 'User logged out successfully',
             ], Response::HTTP_OK)
             ->withCookie(
-                Cookie::forget($tokenName)
+                Cookie::forget($tokenName, '/', 'localhost')
             );
 
         } catch (\Throwable $e) {

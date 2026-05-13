@@ -39,11 +39,12 @@ Route::middleware(['auth:api','role:admin|moderator|user'])->controller(ProductC
     ->prefix('products')
     ->group(function () {
         Route::post('/', 'store')->middleware(['role:admin|moderator']);
-        Route::get('/', 'index');
         Route::get('/{id}', 'show');
         Route::put('/{id}', 'update')->middleware(['role:admin|moderator']);
         Route::delete('/{id}', 'destroy')->middleware(['role:admin|moderator']);
     });
+
+Route::get('/products', [ProductController::class, 'index']);
 
     Route::middleware('auth:api')
     ->prefix('bookings')

@@ -115,5 +115,5 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
-    'token_name' => env('AUTH_TOKEN_NAME', 'access_token'),
+    'token_name' => env('AUTH_TOKEN_NAME', 'StoreApiToken'),
 ];
