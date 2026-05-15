@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +17,6 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Hash;
-
 
 class StorageController extends Controller
 {
@@ -325,19 +323,25 @@ class StorageController extends Controller
         }
     }
     //----------------------imports functions
-    public function importProductsFromXlsxBucket(): int
+    public function importProductsFromXlsxBucket()
     {
         try {
             $diskName = config('filesystems.storage_service');
+            $bucket = config("filesystems.disks.{$diskName}.bucket");
 
-            $fileName = 'products_' . now()->format('d_m_Y') . '.xlsx';
+            $fileName = 'products_' . now()->format('Y-m-d') . '.xlsx';
 
-            $remotePath = 'import-products/' . $fileName;
+            $remotePath = $bucket . '/' . config('filesystems.folder_name.import_product') . '/' . $fileName;
             $localPath = storage_path('app/' . $fileName);
 
             if (!Storage::disk($diskName)->exists($remotePath)) {
                 Log::warning('Import products file not found in bucket: ' . $remotePath);
-                return Response::HTTP_NOT_FOUND;
+                return response()->json(
+                    [
+                        'message' => 'Products not found in the buckets',
+                    ],
+                    Response::HTTP_NOT_FOUND,
+                );
             }
 
             $fileContent = Storage::disk($diskName)->get($remotePath);
@@ -355,9 +359,9 @@ class StorageController extends Controller
             foreach ($rows as $row) {
                 $name = $row[0] ?? null;
                 $description = $row[1] ?? null;
-                $isActive = $row[2] ?? true;
-                $price = $row[3] ?? null;
-                $quantity = $row[4] ?? 0;
+                $price = $row[2] ?? null;
+                $quantity = $row[3] ?? 0;
+                $isActive = $row[4] ?? true;
 
                 if (!$name || !$price) {
                     continue;
@@ -379,9 +383,91 @@ class StorageController extends Controller
                 unlink($localPath);
             }
 
-            return Response::HTTP_OK;
+            return response()->json(
+                [
+                    'message' => 'Products loaded successfully',
+                ],
+                Response::HTTP_OK,
+            );
         } catch (\Throwable $e) {
             Log::error('Import products from XLSX error: ' . $e->getMessage());
+            if (isset($localPath) && file_exists($localPath)) {
+                unlink($localPath);
+            }
+            return response()->json(
+                [
+                    'message' => 'Failed to loaded product',
+                ],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    public function importUsersFromXlsxBucket(): int
+    {
+        try {
+            $diskName = config('filesystems.storage_service');
+
+            $bucket = config("filesystems.disks.{$diskName}.bucket");
+
+            $fileName = 'users_' . now()->format('Y-m-d') . '.xlsx';
+
+            $remotePath = $bucket . '/' . config('filesystems.folder_name.import_user') . '/' . $fileName;
+
+            $localPath = storage_path('app/' . $fileName);
+
+            if (!Storage::disk($diskName)->exists($remotePath)) {
+                Log::warning('Import users file not found in bucket: ' . $remotePath);
+                return Response::HTTP_NOT_FOUND;
+            }
+
+            $fileContent = Storage::disk($diskName)->get($remotePath);
+
+            file_put_contents($localPath, $fileContent);
+
+            $spreadsheet = IOFactory::load($localPath);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $rows = $sheet->toArray();
+     
+            // Remove header row
+            unset($rows[0]);
+
+            foreach ($rows as $row) {
+                $name = $row[0] ?? null;
+                $email = $row[1] ?? null;
+                $personalId = $row[2] ?? null;
+                $phone = $row[3] ?? null;
+                $roleId = $row[4] ?? null;
+
+                if (!$name || !$personalId || !$phone || !$roleId || !$email) {
+                    continue;
+                }
+                $role = Role::find($roleId);
+                if (!$role) {
+                    continue;
+                }
+                $user = User::updateOrCreate(
+                    ['personal_id' => $personalId],
+                    [
+                        'name' => $name,
+                        'email' => $email,
+                        'phone' => $phone,
+                        'password' => Hash::make($personalId),
+                        'is_deleted' => false,
+                    ],
+                );
+
+                $user->syncRoles([$role]);
+            }
+
+            if (file_exists($localPath)) {
+                unlink($localPath);
+            }
+
+            return Response::HTTP_OK;
+        } catch (\Throwable $e) {
+            Log::error('Import users from XLSX error: ' . $e->getMessage());
             if (isset($localPath) && file_exists($localPath)) {
                 unlink($localPath);
             }
@@ -389,78 +475,6 @@ class StorageController extends Controller
             return Response::HTTP_INTERNAL_SERVER_ERROR;
         }
     }
-
-public function importUsersFromXlsxBucket(): int
-{
-    try {
-        $diskName = config('filesystems.storage_service');
-
-        $fileName = 'user_' . now()->format('d_m_Y') . '.xlsx';
-
-        $remotePath = 'import-user/' . $fileName;
-        $localPath = storage_path('app/' . $fileName);
-
-        if (!Storage::disk($diskName)->exists($remotePath)) {
-            Log::warning('Import users file not found in bucket: ' . $remotePath);
-            return Response::HTTP_NOT_FOUND;
-        }
-
-        $fileContent = Storage::disk($diskName)->get($remotePath);
-
-        file_put_contents($localPath, $fileContent);
-
-        $spreadsheet = IOFactory::load($localPath);
-        $sheet = $spreadsheet->getActiveSheet();
-
-        $rows = $sheet->toArray();
-
-        // Remove header row
-        unset($rows[0]);
-
-        foreach ($rows as $row) {
-            $name = $row[0] ?? null;
-            $personalId = $row[1] ?? null;
-            $phone = $row[2] ?? null;
-            $roleId = $row[3] ?? null;
-            $email = $row[4] ?? null;
-
-            if (!$name || !$personalId || !$phone || !$roleId || !$email) {
-                continue;
-            }
-
-            $role = Role::find($roleId);
-
-    
-            $user = User::updateOrCreate(
-                ['personal_id' => $personalId],
-                [
-                    'name' => $name,
-                    'email' => $email,
-                    'phone' => $phone,
-                    'password' => Hash::make($personalId),
-                    'is_deleted' => false,
-                ]
-            );
-
-            $user->syncRoles([$role]);
-        }
-
-        if (file_exists($localPath)) {
-            unlink($localPath);
-        }
-
-        return Response::HTTP_OK;
-
-    } catch (\Throwable $e) {
-        Log::error('Import users from XLSX error: ' . $e->getMessage());
-
-        if (isset($localPath) && file_exists($localPath)) {
-            unlink($localPath);
-        }
-
-        return Response::HTTP_INTERNAL_SERVER_ERROR;
-    }
-}
     /**
      * Upload a local file to the configured storage disk (S3, MinIO, etc.)
      * and optionally delete it locally after upload.
@@ -473,7 +487,6 @@ public function importUsersFromXlsxBucket(): int
     public function uploadFileToBucket(string $localPath, string $remoteDirectory = 'logs', bool $deleteLocal = true): int
     {
         try {
-
             if (!file_exists($localPath)) {
                 Log::warning('Warning in LogService: uploadExcelToS3 function: Excel file not found at path:');
                 return 200;

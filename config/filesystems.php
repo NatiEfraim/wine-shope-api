@@ -89,8 +89,13 @@ return [
 
     'folder_name' => [
         'log_folder' => (string) env('LOG_FOLDER_NAME', 'logs'),
+
         'export_booking' => (string) env('EXPORT_BOOKING', 'export-booking'),
+
         'export_user' => (string) env('EXPORT_USER', 'export-user'),
-        'export_product' => (string) env('EXPORT_USER', 'export-product'),
+        'import_user' => (string) env('IMPORT_USER', 'import-user'),
+
+        'export_product' => (string) env('EXPORT_PRODUCT', 'export-product'),
+        'import_product' => (string) env('IMPORT_PRODUCT', 'import-product'),
     ],
 ];

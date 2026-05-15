@@ -66,4 +66,6 @@ Route::get('/products', [ProductController::class, 'index']);
         Route::get('/export-booking', 'exportBookingDataIntoXlsx');
         Route::get('/export-user', 'exportUsersIntoXlsx');
         Route::get('/export-product', 'exportProductsIntoXlsx');
+        Route::post('/import-product', 'importProductsFromXlsxBucket');
+        Route::post('/import-user', 'importUsersFromXlsxBucket');
     });
