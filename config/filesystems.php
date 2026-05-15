@@ -85,8 +85,8 @@ return [
         public_path('storage') => storage_path('app/public'),
     ],
 
-    'storage_service' => env('STORAGE_SERVICE','minio'),
-
+    'storage_service' => env('STORAGE_SERVICE', 'minio'),
+    'temp_url_lifetime' => env('TEMP_URL_LIFETIME', 60),
     'folder_name' => [
         'log_folder' => (string) env('LOG_FOLDER_NAME', 'logs'),
 

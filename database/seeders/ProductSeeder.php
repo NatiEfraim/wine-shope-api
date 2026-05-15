@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Product;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class ProductSeeder extends Seeder
 {
@@ -50,6 +51,8 @@ class ProductSeeder extends Seeder
         ];
 
         foreach ($products as $product) {
+
+           $product['sku'] = strtoupper( Str::random(8));
             Product::create($product);
         }
     }

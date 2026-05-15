@@ -17,6 +17,8 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 class StorageController extends Controller
 {
@@ -127,9 +129,6 @@ class StorageController extends Controller
                     $sheet->setCellValue("E{$row}", $item->unit_price);
                     $sheet->setCellValue("F{$row}", $item->total_price);
                     $sheet->setCellValue("G{$row}", optional($booking->created_at)->format('d/m/Y H:i'));
-
-                    // $sheet->setCellValue("G{$row}", $booking->total_price);
-
                     $row++;
                 }
             }
@@ -210,7 +209,6 @@ class StorageController extends Controller
                 $sheet->setCellValue("B{$row}", $user->email);
                 $sheet->setCellValue("C{$row}", $user->personal_id);
                 $sheet->setCellValue("D{$row}", $user->phone);
-                // $sheet->setCellValue("E{$row}", $role ? RoleEnum::labelFromId($role->id) : 'לא קיים');
                 $sheet->setCellValue("E{$row}", $role->id);
 
                 $row++;
@@ -429,7 +427,7 @@ class StorageController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
 
             $rows = $sheet->toArray();
-     
+
             // Remove header row
             unset($rows[0]);
 
@@ -505,6 +503,69 @@ class StorageController extends Controller
             return Response::HTTP_OK;
         } catch (\Exception $e) {
             Log::error('Error in StorageService: uploadFileToBucket function: ' . $e->getMessage());
+            return Response::HTTP_INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    /**
+     * Upload an image file to MinIO under <bucket>/images/<generated-name>.
+     * Returns a payload compatible with your ImageService expectations.
+     *
+     * @throws \RuntimeException on failure
+     */
+
+    public function uploadImageToBucket(UploadedFile $image, string  $directory = 'images'): array|int
+    {
+        try {
+
+            $disk = config('filesystems.filesystem_disk');
+    
+            $extension = strtolower($image->getClientOriginalExtension() ?: 'jpg');
+            $originalName = $image->getClientOriginalName();
+            $randomFileName = uniqid() . '_' . Str::random(10) . '.' . $extension;
+           
+            $bucket = config('filesystems.disks.minio.bucket');
+            $directory = $bucket . '/' . $directory;
+            $storedPath = $image->storeAs($directory, $randomFileName, $disk);
+            $imagePath = $storedPath;
+
+            return [
+                'status' => Response::HTTP_OK,
+                'extension' => $extension,
+                'originalName' => $originalName,
+                'randomFileName' => $randomFileName,
+                'imagePath' => $imagePath,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error in StorageService: uploadImageToBucket function:' . $e->getMessage());
+            $this->logToS3();
+            return Response::HTTP_INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    public function deleteImage(string $imagePathOrName)
+    {
+        try {
+            $diskName = config('filesystems.storage_service');
+            $bucket = config("filesystems.disks.{$diskName}.bucket");
+            $folder = trim(config('filesystems.image_folder', 'images'), '/');
+            $diskName = config('filesystems.filesystem_disk');
+            $disk = Storage::disk($diskName);
+
+            $bucket = config('filesystems.disks.minio.bucket');
+
+            $fullPath = str_contains($imagePathOrName, '/') ? $imagePathOrName : $bucket . '/' . $folder . '/' . $imagePathOrName;
+
+            if ($disk->exists($fullPath)) {
+                return $disk->delete($fullPath);
+            }
+
+            Log::info("Image not found: {$fullPath}");
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            $this->logToS3();
             return Response::HTTP_INTERNAL_SERVER_ERROR;
         }
     }
