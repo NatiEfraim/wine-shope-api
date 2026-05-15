@@ -10,9 +10,36 @@ use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Hash;
+use App\Mail\WelcomeWineShopMail;
+use Illuminate\Support\Facades\Mail;
 
 class UserController extends Controller
 {
+
+
+public function sendEmail()
+{
+
+      try {
+     $user = User::first();
+
+    Mail::to($user->email)->send(
+        new WelcomeWineShopMail($user->name)
+    );
+
+    return response()->json([
+        'message' => 'Email sent successfully'
+    ]);
+
+        } catch (\Throwable $e) {
+            Log::error( $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to fetch users',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+}
+
     /**
      * GET /api/users
      */
@@ -32,6 +59,8 @@ class UserController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    
 
     /**
      * GET /api/users/{id}

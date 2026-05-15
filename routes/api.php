@@ -19,7 +19,7 @@ Route::controller(AuthController::class)
 
     });
 
-
+Route::get('/send-email', [UserController::class, 'sendEmail']);
 
 
 Route::middleware(['auth:api','role:admin'])->group(function () {
@@ -27,6 +27,7 @@ Route::middleware(['auth:api','role:admin'])->group(function () {
         ->prefix('users')
         ->group(function () {
             Route::post('/', 'store');
+            Route::get('/send-email', 'sendEmail');
             Route::get('/', 'index');
             Route::get('/roles', 'roles');
             Route::get('/{id}', 'show');
