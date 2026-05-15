@@ -19,8 +19,6 @@ Route::controller(AuthController::class)
 
     });
 
-Route::get('/send-email', [UserController::class, 'sendEmail']);
-
 
 Route::middleware(['auth:api','role:admin'])->group(function () {
     Route::controller(UserController::class)
