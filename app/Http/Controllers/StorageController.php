@@ -91,7 +91,6 @@ class StorageController extends Controller
                 'C1' => 'סטטוס',
                 'D1' => 'כמות',
                 'E1' => 'מחיר יחידה',
-                // 'F1' => 'סה״כ שורה',
                 'F1' => 'סה״כ הזמנה',
                 'G1' => 'תאריך יצירה',
             ];
@@ -240,7 +239,7 @@ class StorageController extends Controller
         }
     }
 
-    public function exportProductsIntoXlsx(): int
+    public function exportProductsIntoXlsx()
     {
         try {
             $products = Product::where('is_deleted', false)->orderBy('id')->get();
@@ -255,26 +254,35 @@ class StorageController extends Controller
             $sheet->setRightToLeft(true);
 
             $headers = [
-                'A1' => 'שם מוצר',
-                'B1' => 'תיאור',
-                'C1' => 'מחיר',
-                'D1' => 'כמות',
-                'E1' => 'פעיל',
+                'A1' => 'מספר מקט',
+                'B1' => 'שם מוצר',
+                'C1' => 'תיאור',
+                'D1' => 'מחיר',
+                'E1' => 'כמות',
+                'F1' => 'פעיל',
             ];
 
             foreach ($headers as $cell => $text) {
                 $sheet->setCellValue($cell, $text);
             }
 
-            $sheet->getStyle('A1:E1')->applyFromArray([
-                'font' => ['bold' => true, 'size' => 12],
+            $sheet->getStyle('A1:F1')->applyFromArray([
+                'font' => [
+                    'bold' => true,
+                    'size' => 12,
+                ],
+
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
-                    'color' => ['rgb' => '336D4B'],
+                    'color' => [
+                        'rgb' => '336D4B',
+                    ],
                 ],
+
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
                 ],
+
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -285,26 +293,31 @@ class StorageController extends Controller
             $row = 2;
 
             foreach ($products as $product) {
-                $sheet->setCellValue("A{$row}", $product->name);
-                $sheet->setCellValue("B{$row}", $product->description ?? 'לא קיים');
-                $sheet->setCellValue("C{$row}", $product->price);
-                $sheet->setCellValue("D{$row}", $product->quantity);
-                $sheet->setCellValue("E{$row}", $product->is_active ? 'כן' : 'לא');
+                $sheet->setCellValue("A{$row}", $product->sku);
+
+                $sheet->setCellValue("B{$row}", $product->name);
+
+                $sheet->setCellValue("C{$row}", $product->description ?? 'לא קיים');
+
+                $sheet->setCellValue("D{$row}", $product->price);
+
+                $sheet->setCellValue("E{$row}", $product->quantity);
+
+                $sheet->setCellValue("F{$row}", $product->is_active ? 'כן' : 'לא');
 
                 $row++;
             }
 
-            $sheet->getStyle('A1:E' . ($row - 1))->applyFromArray([
+            $sheet->getStyle('A1:F' . ($row - 1))->applyFromArray([
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
                     'vertical' => Alignment::VERTICAL_CENTER,
                 ],
             ]);
 
-            foreach (range('A', 'E') as $column) {
+            foreach (range('A', 'F') as $column) {
                 $sheet->getColumnDimension($column)->setAutoSize(true);
             }
-
             $fileName = 'products_' . now()->format('Y-m-d_H-i') . '.xlsx';
             $localPath = storage_path("app/{$fileName}");
 
@@ -313,13 +326,24 @@ class StorageController extends Controller
 
             $this->uploadFileToBucket(localPath: $localPath, remoteDirectory: config('filesystems.folder_name.export_product'));
 
-            return Response::HTTP_OK;
+            return response()->json(
+                [
+                    'message' => 'Products exported successfully',
+                ],
+                Response::HTTP_OK,
+            );
         } catch (\Throwable $e) {
             Log::error('Export products error: ' . $e->getMessage());
 
-            return Response::HTTP_INTERNAL_SERVER_ERROR;
+            return response()->json(
+                [
+                    'message' => 'Failed to loaded product',
+                ],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
         }
     }
+
     //----------------------imports functions
     public function importProductsFromXlsxBucket()
     {
@@ -355,23 +379,36 @@ class StorageController extends Controller
             unset($rows[0]);
 
             foreach ($rows as $row) {
-                $name = $row[0] ?? null;
-                $description = $row[1] ?? null;
-                $price = $row[2] ?? null;
-                $quantity = $row[3] ?? 0;
-                $isActive = $row[4] ?? true;
+                $sku = $row[0] ?? null;
 
-                if (!$name || !$price) {
+                $name = $row[1] ?? null;
+
+                $description = $row[2] ?? null;
+
+                $price = $row[3] ?? null;
+
+                $quantity = $row[4] ?? 0;
+
+                $isActive = $row[5] ?? true;
+                if (!$sku || !$name || !$price) {
                     continue;
                 }
 
                 Product::updateOrCreate(
-                    ['name' => $name],
                     [
+                        'sku' => $sku,
+                    ],
+                    [
+                        'name' => $name,
+
                         'description' => $description,
-                        'is_active' => in_array($isActive, ['כן', 'yes', 'true', true, 1, '1']),
+
                         'price' => $price,
+
                         'quantity' => $quantity,
+
+                        'is_active' => in_array($isActive, ['כן', 'yes', 'true', true, 1, '1']),
+
                         'is_deleted' => false,
                     ],
                 );
@@ -514,16 +551,15 @@ class StorageController extends Controller
      * @throws \RuntimeException on failure
      */
 
-    public function uploadImageToBucket(UploadedFile $image, string  $directory = 'images'): array|int
+    public function uploadImageToBucket(UploadedFile $image, string $directory = 'images'): array|int
     {
         try {
-
             $disk = config('filesystems.filesystem_disk');
-    
+
             $extension = strtolower($image->getClientOriginalExtension() ?: 'jpg');
             $originalName = $image->getClientOriginalName();
             $randomFileName = uniqid() . '_' . Str::random(10) . '.' . $extension;
-           
+
             $bucket = config('filesystems.disks.minio.bucket');
             $directory = $bucket . '/' . $directory;
             $storedPath = $image->storeAs($directory, $randomFileName, $disk);
