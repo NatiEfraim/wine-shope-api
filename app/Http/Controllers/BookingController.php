@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BookingCreatedMail;
+use App\Mail\BookingStatusUpdatedMail;
 
 class BookingController extends Controller
 {
@@ -117,12 +118,12 @@ class BookingController extends Controller
                 'status_id' => $validated['status_id'],
             ]);
 
-            $booking = Booking::with(['user', 'status', 'items.product'])->find($booking->id);
-
+            // $booking = Booking::with(['user', 'status', 'items.product'])->find($booking->id);
+Mail::to($booking->user->email)->send(new BookingStatusUpdatedMail($booking));
             return response()->json(
                 [
                     'message' => 'Booking updated successfully',
-                    'data' => $booking,
+                    // 'data' => $booking,
                 ],
                 Response::HTTP_OK,
             );
