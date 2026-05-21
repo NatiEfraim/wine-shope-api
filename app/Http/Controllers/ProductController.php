@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
+use App\Models\ProductLike;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +12,7 @@ use App\Models\Image;
 use App\Http\Controllers\StorageController;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\ProductResource;
+use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
@@ -70,7 +72,47 @@ class ProductController extends Controller
             );
         }
     }
+    /**
+     * POST /api/products/like
+     * Like or dislike product based on authenticated user.
+     */
+    public function likeOrDislike(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'product_id' => ['required', 'integer', 'exists:products,id'],
+                'like' => ['nullable', 'boolean'],
+            ]);
 
+            $userId = Auth::id();
+
+            $productLike = ProductLike::updateOrCreate(
+                [
+                    'user_id' => $userId,
+                    'product_id' => $validated['product_id'],
+                ],
+                [
+                    'like' => $validated['like'] ?? true,
+                ],
+            );
+
+            return response()->json(
+                [
+                    'message' => $validated['like'] ? 'Product liked successfully' : 'Product disliked successfully',
+                    'data' => $productLike,
+                ],
+                Response::HTTP_OK,
+            );
+        } catch (\Throwable $e) {
+           Log::error('Product likeOrDislike error: ' . $e->getMessage());
+            return response()->json(
+                [
+                    'message' => 'Something went wrong',
+                ],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
     /**
      * POST /api/products
      */

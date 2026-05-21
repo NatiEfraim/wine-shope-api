@@ -34,16 +34,17 @@ Route::middleware(['auth:api','role:admin'])->group(function () {
         });
 });
 
-Route::middleware(['auth:api','role:admin|moderator|user'])->controller(ProductController::class)
+Route::middleware(['auth:api', 'role:admin|moderator|user'])
+    ->controller(ProductController::class)
     ->prefix('products')
     ->group(function () {
+        Route::get('/', 'index');
         Route::post('/', 'store')->middleware(['role:admin|moderator']);
+        Route::post('/like', 'likeOrDislike');
         Route::get('/{id}', 'show');
         Route::put('/{id}', 'update')->middleware(['role:admin|moderator']);
         Route::delete('/{id}', 'destroy')->middleware(['role:admin|moderator']);
     });
-
-Route::get('/products', [ProductController::class, 'index']);
 
     Route::middleware('auth:api')
     ->prefix('bookings')

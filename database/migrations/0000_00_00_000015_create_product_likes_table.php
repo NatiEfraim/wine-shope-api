@@ -20,6 +20,7 @@ return new class extends Migration
                 ->constrained('products')
                 ->cascadeOnDelete();
             $table->boolean('like')->default(true);
+                $table->unique(['user_id', 'product_id']);
             $table->timestamps();
         });
     }
