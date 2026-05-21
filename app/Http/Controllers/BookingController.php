@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BookingCreatedMail;
 
 class BookingController extends Controller
 {
@@ -21,80 +23,73 @@ class BookingController extends Controller
      * POST /api/bookings
      * Create booking with many booking items
      */
-public function store(StoreBookingRequest $request)
-{
-    DB::beginTransaction();
+    public function store(StoreBookingRequest $request)
+    {
+        DB::beginTransaction();
 
-    try {
-        $validated = $request->validated();
+        try {
+            $validated = $request->validated();
 
-        $user =Auth::user();
-        $pendingStatus = Status::where('name', 'pending')->first();
+            $user = Auth::user();
+            $pendingStatus = Status::where('name', 'pending')->first();
 
-        $booking = Booking::create([
-            'user_id' => $user->id,
-            'status_id' => $pendingStatus->id,
-            'total_price' => 0,
-            'is_deleted' => false,
-        ]);
-
-        $bookingTotal = 0;
-
-        foreach ($validated['items'] as $item) {
-            $product = Product::where('is_deleted', false)
-                ->where('is_active', true)
-                ->where('id', $item['product_id'])
-                ->lockForUpdate()
-                ->first();
-
-    
-            if ($product->quantity < $item['quantity']) {
-                throw new \Exception("Not enough quantity for product: {$product->name}");
-            }
-
-            $unitPrice = $product->price_after_discount;
-            $totalPrice = $unitPrice * $item['quantity'];
-
-            BookingItem::create([
-                'booking_id' => $booking->id,
-                'product_id' => $product->id,
-                'quantity' => $item['quantity'],
-                'unit_price' => $unitPrice,
-                'total_price' => $totalPrice,
+            $booking = Booking::create([
+                'user_id' => $user->id,
+                'status_id' => $pendingStatus->id,
+                'total_price' => 0,
+                'is_deleted' => false,
             ]);
 
-            $product->decrement('quantity', $item['quantity']);
+            $bookingTotal = 0;
 
-            $bookingTotal += $totalPrice;
+            foreach ($validated['items'] as $item) {
+                $product = Product::where('is_deleted', false)->where('is_active', true)->where('id', $item['product_id'])->lockForUpdate()->first();
+
+                if ($product->quantity < $item['quantity']) {
+                    throw new \Exception("Not enough quantity for product: {$product->name}");
+                }
+
+                $unitPrice = $product->price_after_discount;
+                $totalPrice = $unitPrice * $item['quantity'];
+
+                BookingItem::create([
+                    'booking_id' => $booking->id,
+                    'product_id' => $product->id,
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $unitPrice,
+                    'total_price' => $totalPrice,
+                ]);
+
+                $product->decrement('quantity', $item['quantity']);
+
+                $bookingTotal += $totalPrice;
+            }
+
+            $booking->update([
+                'total_price' => $bookingTotal,
+            ]);
+
+            DB::commit();
+
+            $booking = Booking::with(['user', 'status', 'items.product'])->find($booking->id);
+            Mail::to($user->email)->send(new BookingCreatedMail($booking));
+            return response()->json(
+                [
+                    'message' => 'Booking created successfully',
+                ],
+                Response::HTTP_CREATED,
+            );
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Booking store error: ' . $e->getMessage());
+            return response()->json(
+                [
+                    'message' => 'Failed to created booking',
+                ],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
         }
-
-        $booking->update([
-            'total_price' => $bookingTotal,
-        ]);
-
-        DB::commit();
-
-        $booking = Booking::with([
-            'user',
-            'status',
-            'items.product',
-        ])->find($booking->id);
-
-        return response()->json([
-            'message' => 'Booking created successfully',
-            // 'data' => $booking,
-        ], Response::HTTP_CREATED);
-
-    } catch (\Throwable $e) {
-        DB::rollBack();
-
-        Log::error('Booking store error: ' . $e->getMessage());
-
-        return response()->json([
-            'message' => $e->getMessage(),
-        ], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
-}
 
     /**
      * PUT /api/bookings/{id}
