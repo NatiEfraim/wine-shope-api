@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
+use App\Models\BookingItem;
 use App\Models\ProductLike;
 use Illuminate\Http\Request;
 use App\Models\Product;
@@ -20,9 +21,122 @@ class ProductController extends Controller
     /**
      * GET /api/products
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
+            if ($request->has('myflaver')) {
+                $userId = Auth::id();
+                $likedProductIds = ProductLike::where('user_id', $userId)->where('like', true)->pluck('product_id')->toArray();
+
+                $dislikedProductIds = ProductLike::where('user_id', $userId)->where('like', false)->pluck('product_id')->toArray();
+
+                $likedProducts = Product::with(['image'])
+                    ->where('is_deleted', false)
+                    ->whereIn('id', $likedProductIds)
+                    ->get();
+
+                $excludedProductIds = array_merge($likedProductIds, $dislikedProductIds);
+
+                $otherProducts = Product::with(['image'])
+                    ->where('is_deleted', false)
+                    ->whereNotIn('id', $excludedProductIds)
+                    ->get();
+
+                $products = $likedProducts->merge($otherProducts)->values();
+
+                return response()->json(ProductResource::collection($products), Response::HTTP_OK);
+            }
+
+/*
+ * GET /api/products?recommended=true
+ *
+ * Order:
+ * 1. Products that Auth user bought before
+ * 2. Products that other users bought before
+ * 3. All other products
+ */
+            if ($request->has('recommended')) {
+                $userId = Auth::id();
+
+                /*
+                 * 1. Get all product ids from booking_items
+                 * where the booking belongs to the authenticated user.
+                 */
+                $authUserProductIds = BookingItem::whereHas('booking', function ($query) use ($userId) {
+                    $query->where('user_id', $userId)->where('is_deleted', false);
+                })
+                    ->pluck('product_id')
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                /*
+                 * 2. Get all product ids from booking_items
+                 * where the booking belongs to other users.
+                 *
+                 * Important:
+                 * Exclude products that already exist in $authUserProductIds,
+                 * because they are already in the first section.
+                 */
+                $otherUsersProductIds = BookingItem::whereHas('booking', function ($query) use ($userId) {
+                    $query->where('user_id', '!=', $userId)->where('is_deleted', false);
+                })
+                    ->whereNotIn('product_id', $authUserProductIds)
+                    ->pluck('product_id')
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                /*
+                 * 3. First query:
+                 * Products that the authenticated user bought.
+                 */
+                $authUserProducts = Product::with(['image'])
+                    ->where('is_deleted', false)
+                    ->whereIn('id', $authUserProductIds)
+                    ->get();
+
+                /*
+                 * 4. Second query:
+                 * Products that other users bought.
+                 */
+                $otherUsersProducts = Product::with(['image'])
+                    ->where('is_deleted', false)
+                    ->whereIn('id', $otherUsersProductIds)
+                    ->get();
+
+                /*
+                 * 5. Exclude both:
+                 * - Auth user products
+                 * - Other users products
+                 */
+                $excludedProductIds = array_merge($authUserProductIds, $otherUsersProductIds);
+
+                /*
+                 * 6. Third query:
+                 * All other products that were not bought by auth user
+                 * and not bought by other users.
+                 */
+                $otherProducts = Product::with(['image'])
+                    ->where('is_deleted', false)
+                    ->whereNotIn('id', $excludedProductIds)
+                    ->get();
+
+                /*
+                 * 7. Merge final result:
+                 * Auth user bought products first,
+                 * then products bought by other users,
+                 * then all other products.
+                 */
+                $products = $authUserProducts->merge($otherUsersProducts)->merge($otherProducts)->values();
+
+                return response()->json(ProductResource::collection($products), Response::HTTP_OK);
+            }
+
+            /*
+             * GET /api/products
+             * Regular products list.
+             */
             $products = Product::with(['image'])
                 ->where('is_deleted', false)
                 ->get();
@@ -104,7 +218,7 @@ class ProductController extends Controller
                 Response::HTTP_OK,
             );
         } catch (\Throwable $e) {
-           Log::error('Product likeOrDislike error: ' . $e->getMessage());
+            Log::error('Product likeOrDislike error: ' . $e->getMessage());
             return response()->json(
                 [
                     'message' => 'Something went wrong',
