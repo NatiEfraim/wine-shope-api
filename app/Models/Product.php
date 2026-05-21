@@ -51,4 +51,28 @@ class Product extends Model
     {
         return $this->hasMany(BookingItem::class);
     }
+
+    /**
+ * Product has many like records.
+ */
+public function likes()
+{
+    return $this->hasMany(ProductLike::class, 'product_id', 'id');
+}
+
+/**
+ * Product belongs to many users that liked it.
+ */
+public function likedByUsers()
+{
+    return $this->belongsToMany(
+        User::class,
+        'product_likes',
+        'product_id',
+        'user_id'
+    )
+        ->wherePivot('like', true)
+        ->withPivot('like')
+        ->withTimestamps();
+}
 }

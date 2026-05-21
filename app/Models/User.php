@@ -53,6 +53,30 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+ * User has many product like records.
+ */
+public function productLikes()
+{
+    return $this->hasMany(ProductLike::class, 'user_id', 'id');
+}
+
+/**
+ * User has many liked products through product_likes table.
+ */
+public function likedProducts()
+{
+    return $this->belongsToMany(
+        Product::class,
+        'product_likes',
+        'user_id',
+        'product_id'
+    )
+        ->wherePivot('like', true)
+        ->withPivot('like')
+        ->withTimestamps();
+}
+
     public function bookings()
 {
     return $this->hasMany(Booking::class);
