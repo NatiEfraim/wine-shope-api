@@ -65,7 +65,7 @@ class StorageController extends Controller
     }
 
     //-----------------Exports fucntions
-    public function exportBookingDataIntoXlsx(): int
+    public function exportBookingDataIntoXlsx()
     {
         try {
             $bookings = Booking::with(['user', 'status', 'items.product'])
@@ -75,7 +75,12 @@ class StorageController extends Controller
 
             if ($bookings->isEmpty()) {
                 Log::info('No bookings found to export');
-                return Response::HTTP_BAD_REQUEST;
+                return response()->json(
+                    [
+                        'message' => 'Users not found',
+                    ],
+                    Response::HTTP_BAD_REQUEST,
+                );
             }
 
             $spreadsheet = new Spreadsheet();
@@ -146,7 +151,7 @@ class StorageController extends Controller
             }
 
             // File name
-            $fileName = 'bookings_' . now()->format('Y-m-d_H-i') . '.xlsx';
+            $fileName = 'bookings.xlsx';
             $localPath = storage_path("app/{$fileName}");
 
             $writer = new Xlsx($spreadsheet);
@@ -154,19 +159,36 @@ class StorageController extends Controller
 
             // Upload to MinIO / S3
             $this->uploadFileToBucket(localPath: $localPath, remoteDirectory: config('filesystems.folder_name.export_booking'));
-
-            return Response::HTTP_OK;
+            return response()->json(
+                [
+                    'message' => 'bookings exported successfully',
+                ],
+                Response::HTTP_OK,
+            );
         } catch (\Exception $e) {
             Log::error('Error exporting bookings: ' . $e->getMessage());
-            return Response::HTTP_INTERNAL_SERVER_ERROR;
+            return response()->json(
+                [
+                    'message' => 'Failed to exported Bookings',
+                ],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
         }
     }
 
-    public function exportUsersIntoXlsx(): int
+    public function exportUsersIntoXlsx()
     {
         try {
             $users = User::with('roles')->where('is_deleted', false)->orderBy('id')->get();
-
+            if ($users->isEmpty()) {
+                Log::info('No users found to export');
+                return response()->json(
+                    [
+                        'message' => 'Users not found',
+                    ],
+                    Response::HTTP_BAD_REQUEST,
+                );
+            }
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setRightToLeft(true);
@@ -224,7 +246,7 @@ class StorageController extends Controller
                 $sheet->getColumnDimension($column)->setAutoSize(true);
             }
 
-            $fileName = 'users_' . now()->format('Y-m-d_H-i') . '.xlsx';
+            $fileName = 'users.xlsx';
             $localPath = storage_path("app/{$fileName}");
 
             $writer = new Xlsx($spreadsheet);
@@ -232,10 +254,20 @@ class StorageController extends Controller
 
             $this->uploadFileToBucket(localPath: $localPath, remoteDirectory: config('filesystems.folder_name.export_user'));
 
-            return Response::HTTP_OK;
+            return response()->json(
+                [
+                    'message' => 'Users exported successfully',
+                ],
+                Response::HTTP_OK,
+            );
         } catch (\Throwable $e) {
             Log::error('Export users error: ' . $e->getMessage());
-            return Response::HTTP_INTERNAL_SERVER_ERROR;
+            return response()->json(
+                [
+                    'message' => 'Failed to exported users',
+                ],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
         }
     }
 
@@ -246,7 +278,12 @@ class StorageController extends Controller
 
             if ($products->isEmpty()) {
                 Log::info('No products found to export');
-                return Response::HTTP_BAD_REQUEST;
+                return response()->json(
+                    [
+                        'message' => 'Products not found to export',
+                    ],
+                    Response::HTTP_BAD_REQUEST,
+                );
             }
 
             $spreadsheet = new Spreadsheet();
@@ -318,7 +355,7 @@ class StorageController extends Controller
             foreach (range('A', 'F') as $column) {
                 $sheet->getColumnDimension($column)->setAutoSize(true);
             }
-            $fileName = 'products_' . now()->format('Y-m-d_H-i') . '.xlsx';
+            $fileName = 'products.xlsx';
             $localPath = storage_path("app/{$fileName}");
 
             $writer = new Xlsx($spreadsheet);
@@ -351,7 +388,7 @@ class StorageController extends Controller
             $diskName = config('filesystems.storage_service');
             $bucket = config("filesystems.disks.{$diskName}.bucket");
 
-            $fileName = 'products_' . now()->format('Y-m-d') . '.xlsx';
+            $fileName = 'products.xlsx';
 
             $remotePath = $bucket . '/' . config('filesystems.folder_name.import_product') . '/' . $fileName;
             $localPath = storage_path('app/' . $fileName);
@@ -360,7 +397,7 @@ class StorageController extends Controller
                 Log::warning('Import products file not found in bucket: ' . $remotePath);
                 return response()->json(
                     [
-                        'message' => 'Products not found in the buckets',
+                        'message' => 'Products xlsx file not found to loaded',
                     ],
                     Response::HTTP_NOT_FOUND,
                 );
@@ -438,14 +475,14 @@ class StorageController extends Controller
         }
     }
 
-    public function importUsersFromXlsxBucket(): int
+    public function importUsersFromXlsxBucket()
     {
         try {
             $diskName = config('filesystems.storage_service');
 
             $bucket = config("filesystems.disks.{$diskName}.bucket");
 
-            $fileName = 'users_' . now()->format('Y-m-d') . '.xlsx';
+            $fileName = 'users.xlsx';
 
             $remotePath = $bucket . '/' . config('filesystems.folder_name.import_user') . '/' . $fileName;
 
@@ -453,7 +490,12 @@ class StorageController extends Controller
 
             if (!Storage::disk($diskName)->exists($remotePath)) {
                 Log::warning('Import users file not found in bucket: ' . $remotePath);
-                return Response::HTTP_NOT_FOUND;
+                return response()->json(
+                    [
+                        'message' => 'Users xlsx file not found to loaded',
+                    ],
+                    Response::HTTP_NOT_FOUND,
+                );
             }
 
             $fileContent = Storage::disk($diskName)->get($remotePath);
@@ -500,14 +542,23 @@ class StorageController extends Controller
                 unlink($localPath);
             }
 
-            return Response::HTTP_OK;
+            return response()->json(
+                [
+                    'message' => 'Users loaded successfully',
+                ],
+                Response::HTTP_OK,
+            );
         } catch (\Throwable $e) {
             Log::error('Import users from XLSX error: ' . $e->getMessage());
             if (isset($localPath) && file_exists($localPath)) {
                 unlink($localPath);
             }
-
-            return Response::HTTP_INTERNAL_SERVER_ERROR;
+            return response()->json(
+                [
+                    'message' => 'Failed to loaded user',
+                ],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
         }
     }
     /**
