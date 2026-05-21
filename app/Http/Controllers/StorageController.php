@@ -605,7 +605,7 @@ class StorageController extends Controller
     public function uploadImageToBucket(UploadedFile $image, string $directory = 'images'): array|int
     {
         try {
-            $disk = config('filesystems.filesystem_disk');
+            $disk = config('filesystems.storage_service');
 
             $extension = strtolower($image->getClientOriginalExtension() ?: 'jpg');
             $originalName = $image->getClientOriginalName();
@@ -614,6 +614,7 @@ class StorageController extends Controller
             $bucket = config('filesystems.disks.minio.bucket');
             $directory = $bucket . '/' . $directory;
             $storedPath = $image->storeAs($directory, $randomFileName, $disk);
+      
             $imagePath = $storedPath;
 
             return [
@@ -626,7 +627,10 @@ class StorageController extends Controller
         } catch (\Exception $e) {
             Log::error('Error in StorageService: uploadImageToBucket function:' . $e->getMessage());
             $this->logToS3();
-            return Response::HTTP_INTERNAL_SERVER_ERROR;
+        
+            return [
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+            ];
         }
     }
 
