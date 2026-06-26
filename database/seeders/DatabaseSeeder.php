@@ -20,8 +20,8 @@ class DatabaseSeeder extends Seeder
         UserSeeder::class,
         StatusSeeder::class,
         ProductSeeder::class,
-        ProductLikeSeeder::class
-        // BookingSeeder::class,
+        ProductLikeSeeder::class,
+        BookingSeeder::class,
         ]);
         // User::factory(10)->create();
 
