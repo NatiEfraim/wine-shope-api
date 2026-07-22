@@ -27,7 +27,7 @@ class UserSeeder extends Seeder
                 'role' => RoleEnum::ADMIN->value,
             ],
             [
-                'name' => 'מוטי פקטור',
+                'name' => 'מוטי פקטר',
                 'email' => 'moti@gmail.com',
                 'personal_id' => '213466154',
                 'phone' => '0502345678',
@@ -35,8 +35,8 @@ class UserSeeder extends Seeder
                 'role' => RoleEnum::MODERATOR->value,
             ],
             [
-                'name' => 'מנדי בויגל',
-                'email' => 'mebdy@gmail.com',
+                'name' => 'מני בויגל',
+                'email' => 'meny@gmail.com',
                 'personal_id' => '123456789',
                 'phone' => '0503456789',
                 'password' => Hash::make('123456'),
