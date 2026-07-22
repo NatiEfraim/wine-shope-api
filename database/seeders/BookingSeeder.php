@@ -7,8 +7,8 @@ use App\Models\BookingItem;
 use App\Models\Product;
 use App\Models\Status;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Faker\Factory as Faker;
 
 class BookingSeeder extends Seeder
 {
@@ -17,18 +17,20 @@ class BookingSeeder extends Seeder
      */
     public function run(): void
     {
-        //
-          $users = User::all();
+        $users = User::all();
         $products = Product::where('is_deleted', false)->get();
         $statuses = Status::all();
+        $faker = Faker::create();
 
         if ($users->isEmpty() || $products->isEmpty() || $statuses->isEmpty()) {
             return;
         }
 
-        for ($i = 1; $i <= 10; $i++) {
+        for ($i = 1; $i <= 300; $i++) {
             $user = $users->random();
             $status = $statuses->random();
+
+            $randomDate = $faker->dateTimeBetween('-1 year', 'now');
 
             $booking = Booking::create([
                 'serial_number' => rand(1000, 9999),
@@ -36,6 +38,8 @@ class BookingSeeder extends Seeder
                 'status_id' => $status->id,
                 'total_price' => 0,
                 'is_deleted' => false,
+                'created_at' => $randomDate, 
+                'updated_at' => $randomDate,
             ]);
 
             $randomProducts = $products->random(rand(1, min(5, $products->count())));
@@ -54,6 +58,8 @@ class BookingSeeder extends Seeder
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'total_price' => $totalPrice,
+                    'created_at' => $randomDate,
+                    'updated_at' => $randomDate,
                 ]);
 
                 $bookingTotal += $totalPrice;
