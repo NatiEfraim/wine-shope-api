@@ -17,11 +17,9 @@ class ProductSeeder extends Seeder
         $products = [
             ['name' => 'Cabernet Sauvignon', 'description' => 'יין אדום עשיר עם טעמי פירות יער שחורים ודומדמניות', 'price' => 120, 'discount' => 20, 'quantity' => 50],
             ['name' => 'Merlot', 'description' => 'יין אדום רך ופירותי עם סיומת חלקה', 'price' => 95, 'discount' => null, 'quantity' => 30],
-            // LOW STOCK: Changed quantity to 4
             ['name' => 'Chardonnay', 'description' => 'יין לבן יבש עם נגיעות הדרים ורעננות', 'price' => 110, 'discount' => 15, 'quantity' => 4],
             ['name' => 'Rosé Wine', 'description' => 'יין רוזה קליל ומרענן המתאים לקיץ', 'price' => 85, 'discount' => 10, 'quantity' => 25],
             ['name' => 'Pinot Noir', 'description' => 'יין אדום אלגנטי עם ארומות דובדבן ופירות אדומים', 'price' => 130, 'discount' => 12, 'quantity' => 35],
-            // LOW STOCK: Changed quantity to 8
             ['name' => 'Sauvignon Blanc', 'description' => 'יין לבן רענן עם טעמים טרופיים וחמיצות עדינה', 'price' => 90, 'discount' => null, 'quantity' => 8],
             ['name' => 'Shiraz', 'description' => 'יין אדום עוצמתי עם סיומת מתובלת', 'price' => 140, 'discount' => 18, 'quantity' => 28],
             ['name' => 'Malbec', 'description' => 'יין אדום עמוק עם טעמי שזיף וקקאו', 'price' => 115, 'discount' => 8, 'quantity' => 32],
@@ -37,7 +35,6 @@ class ProductSeeder extends Seeder
             ['name' => 'Prosecco', 'description' => 'יין מבעבע איטלקי עם סיומת פירותית', 'price' => 135, 'discount' => null, 'quantity' => 26],
             ['name' => 'Port Wine', 'description' => 'יין מחוזק ומתוק בעל טעמים עמוקים', 'price' => 150, 'discount' => 12, 'quantity' => 17],
             ['name' => 'Dessert Wine', 'description' => 'יין קינוח מתוק עם נגיעות דבש', 'price' => 98, 'discount' => 7, 'quantity' => 33],
-            // LOW STOCK: Changed quantity to 5
             ['name' => 'Petit Verdot', 'description' => 'יין אדום עוצמתי עם טעמי פירות כהים', 'price' => 145, 'discount' => null, 'quantity' => 5],
 
             ['name' => 'Viognier', 'description' => 'יין לבן מלא גוף עם ארומה פרחונית', 'price' => 118, 'discount' => 9, 'quantity' => 29],
@@ -46,7 +43,6 @@ class ProductSeeder extends Seeder
             ['name' => 'Barbera', 'description' => 'יין אדום איטלקי עם חמיצות מאוזנת', 'price' => 112, 'discount' => null, 'quantity' => 36],
             ['name' => 'Chianti', 'description' => 'יין אדום איטלקי קלאסי בעל גוף בינוני', 'price' => 128, 'discount' => 13, 'quantity' => 24],
             ['name' => 'Cava Brut', 'description' => 'יין מבעבע ספרדי יבש ומרענן', 'price' => 102, 'discount' => 8, 'quantity' => 42],
-            // LOW STOCK: Changed quantity to 2
             ['name' => 'Ice Wine', 'description' => 'יין קינוח יוקרתי מענבים קפואים', 'price' => 220, 'discount' => 15, 'quantity' => 2],
             ['name' => 'Organic Red Wine', 'description' => 'יין אדום אורגני יבש ואיכותי', 'price' => 135, 'discount' => null, 'quantity' => 19],
             ['name' => 'Organic White Wine', 'description' => 'יין לבן אורגני יבש ומרענן', 'price' => 125, 'discount' => 10, 'quantity' => 23],

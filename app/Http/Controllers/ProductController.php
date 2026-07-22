@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
+use App\Models\Booking;
 use App\Models\BookingItem;
-use App\Models\ProductLike;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\Log;
@@ -17,125 +17,108 @@ use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
-    //
     /**
      * GET /api/products
      */
     public function index(Request $request)
     {
         try {
-            if ($request->has('myflaver')) {
-                $userId = Auth::id();
-                $likedProductIds = ProductLike::where('user_id', $userId)->where('like', true)->pluck('product_id')->toArray();
-
-                $dislikedProductIds = ProductLike::where('user_id', $userId)->where('like', false)->pluck('product_id')->toArray();
-
-                $likedProducts = Product::with(['image'])
-                    ->where('is_deleted', false)
-                    ->whereIn('id', $likedProductIds)
-                    ->get();
-
-                $excludedProductIds = array_merge($likedProductIds, $dislikedProductIds);
-
-                $otherProducts = Product::with(['image'])
-                    ->where('is_deleted', false)
-                    ->whereNotIn('id', $excludedProductIds)
-                    ->get();
-
-                $products = $likedProducts->merge($otherProducts)->values();
-
-                return response()->json(ProductResource::collection($products), Response::HTTP_OK);
-            }
-
-/*
- * GET /api/products?recommended=true
- *
- * Order:
- * 1. Products that Auth user bought before
- * 2. Products that other users bought before
- * 3. All other products
- */
+            // Recommendation Engine: Weighted Scoring & Collaborative Filtering
             if ($request->has('recommended')) {
                 $userId = Auth::id();
 
-                /*
-                 * 1. Get all product ids from booking_items
-                 * where the booking belongs to the authenticated user.
-                 */
-                $authUserProductIds = BookingItem::whereHas('booking', function ($query) use ($userId) {
-                    $query->where('user_id', $userId)->where('is_deleted', false);
-                })
-                    ->pluck('product_id')
-                    ->unique()
-                    ->values()
-                    ->toArray();
-
-                /*
-                 * 2. Get all product ids from booking_items
-                 * where the booking belongs to other users.
-                 *
-                 * Important:
-                 * Exclude products that already exist in $authUserProductIds,
-                 * because they are already in the first section.
-                 */
-                $otherUsersProductIds = BookingItem::whereHas('booking', function ($query) use ($userId) {
-                    $query->where('user_id', '!=', $userId)->where('is_deleted', false);
-                })
-                    ->whereNotIn('product_id', $authUserProductIds)
-                    ->pluck('product_id')
-                    ->unique()
-                    ->values()
-                    ->toArray();
-
-                /*
-                 * 3. First query:
-                 * Products that the authenticated user bought.
-                 */
-                $authUserProducts = Product::with(['image'])
+                // Get all active products
+                $products = Product::with(['image'])
                     ->where('is_deleted', false)
-                    ->whereIn('id', $authUserProductIds)
+                    ->where('is_active', true)
                     ->get();
 
-                /*
-                 * 4. Second query:
-                 * Products that other users bought.
-                 */
-                $otherUsersProducts = Product::with(['image'])
-                    ->where('is_deleted', false)
-                    ->whereIn('id', $otherUsersProductIds)
-                    ->get();
+                if ($userId) {
+                    // 1. User's Purchase History (Frequency & Recency)
+                    $userBookings = Booking::with('items')
+                        ->where('user_id', $userId)
+                        ->where('is_deleted', false)
+                        ->get();
 
-                /*
-                 * 5. Exclude both:
-                 * - Auth user products
-                 * - Other users products
-                 */
-                $excludedProductIds = array_merge($authUserProductIds, $otherUsersProductIds);
+                    $userPurchasedProductIds = [];
+                    $userProductScores = [];
 
-                /*
-                 * 6. Third query:
-                 * All other products that were not bought by auth user
-                 * and not bought by other users.
-                 */
-                $otherProducts = Product::with(['image'])
-                    ->where('is_deleted', false)
-                    ->whereNotIn('id', $excludedProductIds)
-                    ->get();
+                    foreach ($userBookings as $booking) {
+                        // Recency Multiplier: Decays over 365 days. 
+                        // Today = 2.0x weight, 1 year ago = 1.0x weight.
+                        $daysAgo = max(0, now()->diffInDays($booking->created_at));
+                        $recencyMultiplier = max(1.0, 2.0 - ($daysAgo / 365));
 
-                /*
-                 * 7. Merge final result:
-                 * Auth user bought products first,
-                 * then products bought by other users,
-                 * then all other products.
-                 */
-                $products = $authUserProducts->merge($otherUsersProducts)->merge($otherProducts)->values();
+                        foreach ($booking->items as $item) {
+                            $pid = $item->product_id;
+                            $userPurchasedProductIds[$pid] = true;
+
+                            if (!isset($userProductScores[$pid])) {
+                                $userProductScores[$pid] = 0;
+                            }
+
+                            // Score = Base points (10) * Quantity * Recency
+                            $userProductScores[$pid] += ($item->quantity * 10) * $recencyMultiplier;
+                        }
+                    }
+
+                    $userPurchasedProductIds = array_keys($userPurchasedProductIds);
+
+                    // 2. Collaborative Filtering (Similar Users)
+                    $similarUserScores = [];
+                    if (!empty($userPurchasedProductIds)) {
+                        // Find bookings of other users who bought ANY of the products this user bought
+                        $similarUsersBookings = Booking::with('items')
+                            ->where('user_id', '!=', $userId)
+                            ->where('is_deleted', false)
+                            ->whereHas('items', function ($query) use ($userPurchasedProductIds) {
+                                $query->whereIn('product_id', $userPurchasedProductIds);
+                            })
+                            ->get();
+
+                        foreach ($similarUsersBookings as $booking) {
+                            foreach ($booking->items as $item) {
+                                $pid = $item->product_id;
+                                if (!isset($similarUserScores[$pid])) {
+                                    $similarUserScores[$pid] = 0;
+                                }
+                                // Add points based on what similar users bought (weight 3)
+                                $similarUserScores[$pid] += ($item->quantity * 3);
+                            }
+                        }
+                    }
+
+                    // 3. Global Popularity (Fallback & Baseline)
+                    $globalSales = BookingItem::whereHas('booking', function ($query) {
+                            $query->where('is_deleted', false);
+                        })
+                        ->selectRaw('product_id, SUM(quantity) as total_qty')
+                        ->groupBy('product_id')
+                        ->pluck('total_qty', 'product_id')
+                        ->toArray();
+
+                    // 4. Calculate Final Scores & Map to Products
+                    $scoredProducts = $products->map(function ($product) use ($userProductScores, $similarUserScores, $globalSales) {
+                        $pid = $product->id;
+                        $score = 0;
+
+                        $score += $userProductScores[$pid] ?? 0;
+                        $score += $similarUserScores[$pid] ?? 0;
+                        $score += ($globalSales[$pid] ?? 0) * 1; // 1 point per global sale
+
+                        $product->recommendation_score = $score;
+                        return $product;
+                    });
+
+                    // Sort by score descending
+                    $products = $scoredProducts->sortByDesc('recommendation_score')->values();
+                }
 
                 return response()->json(ProductResource::collection($products), Response::HTTP_OK);
             }
 
             /*
-             * GET /api/products
-             * Regular products list.
+             * Regular products list (No recommendation parameter)
              */
             $products = Product::with(['image'])
                 ->where('is_deleted', false)
@@ -186,47 +169,7 @@ class ProductController extends Controller
             );
         }
     }
-    /**
-     * POST /api/products/like
-     * Like or dislike product based on authenticated user.
-     */
-    public function likeOrDislike(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'product_id' => ['required', 'integer', 'exists:products,id'],
-                'like' => ['nullable', 'boolean'],
-            ]);
 
-            $userId = Auth::id();
-
-            $productLike = ProductLike::updateOrCreate(
-                [
-                    'user_id' => $userId,
-                    'product_id' => $validated['product_id'],
-                ],
-                [
-                    'like' => $validated['like'] ?? true,
-                ],
-            );
-
-            return response()->json(
-                [
-                    'message' => $validated['like'] ? 'Product liked successfully' : 'Product disliked successfully',
-                    'data' => $productLike,
-                ],
-                Response::HTTP_OK,
-            );
-        } catch (\Throwable $e) {
-            Log::error('Product likeOrDislike error: ' . $e->getMessage());
-            return response()->json(
-                [
-                    'message' => 'Something went wrong',
-                ],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-            );
-        }
-    }
     /**
      * POST /api/products
      */
