@@ -14,19 +14,23 @@ return new class extends Migration
     {
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
-                $table->string('serial_number')->nullable();
+            $table->string('serial_number')->nullable();
 
-    $table->foreignId('user_id')
-        ->constrained('users')
-        ->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()
+                ->constrained('users')
+                ->cascadeOnDelete();
 
-    $table->foreignId('status_id')->default(StatusEnum::PENDING->value)
-        ->constrained('statuses')
-        ->restrictOnDelete();
+            $table->string('guest_name')->nullable();
+            $table->string('guest_email')->nullable();
+            $table->string('guest_phone')->nullable();
+            $table->string('guest_personal_id')->nullable();
 
-    $table->decimal('total_price', 10, 2)->default(0);
+            $table->foreignId('status_id')->default(StatusEnum::PENDING->value)
+                ->constrained('statuses')
+                ->restrictOnDelete();
 
-    $table->boolean('is_deleted')->default(false);
+            $table->decimal('total_price', 10, 2)->default(0);
+            $table->boolean('is_deleted')->default(false);
             $table->timestamps();
         });
     }

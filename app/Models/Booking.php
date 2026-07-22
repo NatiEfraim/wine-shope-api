@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Booking extends Model
 {
-    //
     protected $fillable = [
         'serial_number',
         'user_id',
+        'guest_name',
+        'guest_email',
+        'guest_phone',
+        'guest_personal_id',
         'status_id',
         'total_price',
         'is_deleted',
@@ -22,21 +25,20 @@ class Booking extends Model
         'updated_at' => 'datetime:Y-m-d H:i',
     ];
 
-        protected $hidden = [
- 'is_deleted',
+    protected $hidden = [
+        'is_deleted',
     ];
     
     protected static function booted()
     {
         static::created(function (Booking $booking) {
              if (empty($booking->serial_number)) {
-            $booking->forceFill([
-                'serial_number' => rand(100, 999) . $booking->id,
-            ])->saveQuietly();
-        }
+                $booking->forceFill([
+                    'serial_number' => rand(100, 999) . $booking->id,
+                ])->saveQuietly();
+             }
         });
     }
-
 
     public function user()
     {
@@ -52,5 +54,4 @@ class Booking extends Model
     {
         return $this->hasMany(BookingItem::class);
     }
-
 }

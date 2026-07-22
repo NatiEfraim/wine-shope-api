@@ -16,7 +16,6 @@ Route::controller(AuthController::class)
         Route::post('/change-password', 'changePassword')->middleware('auth:api');
         Route::post('/logout', 'logout')->middleware('auth:api');
         Route::get('/user', 'user')->middleware('auth:api');
-
     });
 
 
@@ -34,24 +33,49 @@ Route::middleware(['auth:api','role:admin'])->group(function () {
         });
 });
 
+
+// --------------------------------------------------------
+// נתיבי מוצרים ציבוריים - מאפשר לאורחים לראות את הקטלוג
+// --------------------------------------------------------
+Route::controller(ProductController::class)
+    ->prefix('products')
+    ->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{id}', 'show');
+    });
+
+// --------------------------------------------------------
+// נתיבי מוצרים מאובטחים - למנהלים ולמשתמשים רשומים
+// --------------------------------------------------------
 Route::middleware(['auth:api', 'role:admin|moderator|user'])
     ->controller(ProductController::class)
     ->prefix('products')
     ->group(function () {
-        Route::get('/', 'index');
         Route::post('/', 'store')->middleware(['role:admin|moderator']);
         Route::post('/like', 'likeOrDislike');
-        Route::get('/{id}', 'show');
         Route::put('/{id}', 'update')->middleware(['role:admin|moderator']);
         Route::delete('/{id}', 'destroy')->middleware(['role:admin|moderator']);
     });
 
-    Route::middleware('auth:api')
+
+// --------------------------------------------------------
+// נתיב הזמנות ציבורי - מאפשר קנייה כאורח (Guest Checkout)
+// --------------------------------------------------------
+Route::prefix('bookings')
+    ->controller(BookingController::class)
+    ->group(function () {
+        Route::post('/', 'store'); 
+    });
+
+// --------------------------------------------------------
+// נתיבי הזמנות מאובטחים - צפייה ועריכה
+// --------------------------------------------------------
+Route::middleware('auth:api')
     ->prefix('bookings')
     ->controller(BookingController::class)
     ->group(function () {
-        Route::post('/', 'store');
         Route::get('/my-bookings', 'myBookings');
+        
         Route::middleware('role:admin|moderator')->group(function () {
             Route::get('/', 'index');
             Route::put('/{id}', 'update');
@@ -59,7 +83,8 @@ Route::middleware(['auth:api', 'role:admin|moderator|user'])
         });
     });
 
-    Route::prefix('storage-service')
+
+Route::prefix('storage-service')
     ->controller(StorageController::class)
     ->group(function () {
         Route::get('/', 'logToS3');

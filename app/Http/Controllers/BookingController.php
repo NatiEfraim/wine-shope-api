@@ -19,7 +19,6 @@ use App\Mail\BookingStatusUpdatedMail;
 
 class BookingController extends Controller
 {
-    //
     /**
      * POST /api/bookings
      * Create booking with many booking items
@@ -31,11 +30,16 @@ class BookingController extends Controller
         try {
             $validated = $request->validated();
 
-            $user = Auth::user();
+            $user = Auth::guard('api')->user();
+            $userId = $user ? $user->id : null;
             $pendingStatus = Status::where('name', 'pending')->first();
 
             $booking = Booking::create([
-                'user_id' => $user->id,
+                'user_id' => $userId,
+                'guest_name' => $userId ? null : ($validated['guest_name'] ?? null),
+                'guest_email' => $userId ? null : ($validated['guest_email'] ?? null),
+                'guest_phone' => $userId ? null : ($validated['guest_phone'] ?? null),
+                'guest_personal_id' => $userId ? null : ($validated['guest_personal_id'] ?? null),
                 'status_id' => $pendingStatus->id,
                 'total_price' => 0,
                 'is_deleted' => false,
@@ -62,7 +66,6 @@ class BookingController extends Controller
                 ]);
 
                 $product->decrement('quantity', $item['quantity']);
-
                 $bookingTotal += $totalPrice;
             }
 
@@ -73,22 +76,23 @@ class BookingController extends Controller
             DB::commit();
 
             $booking = Booking::with(['user', 'status', 'items.product'])->find($booking->id);
-            Mail::to($user->email)->send(new BookingCreatedMail($booking));
-            return response()->json(
-                [
-                    'message' => 'Booking created successfully',
-                ],
-                Response::HTTP_CREATED,
-            );
+            
+            $email = $user ? $user->email : $booking->guest_email;
+            
+            if (!empty($email)) {
+                Mail::to($email)->send(new BookingCreatedMail($booking));
+            }
+            
+            return response()->json([
+                'message' => 'Booking created successfully',
+            ], Response::HTTP_CREATED);
+            
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Booking store error: ' . $e->getMessage());
-            return response()->json(
-                [
-                    'message' => 'Failed to created booking',
-                ],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-            );
+            return response()->json([
+                'message' => 'Failed to created booking',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -103,45 +107,38 @@ class BookingController extends Controller
                 'status_id' => ['required', 'integer', 'exists:statuses,id'],
             ]);
 
-            $booking = Booking::where('is_deleted', false)->where('id', $id)->first();
+            $booking = Booking::with(['user'])->where('is_deleted', false)->where('id', $id)->first();
 
             if (!$booking) {
-                return response()->json(
-                    [
-                        'message' => 'Booking not found',
-                    ],
-                    Response::HTTP_NOT_FOUND,
-                );
+                return response()->json([
+                    'message' => 'Booking not found',
+                ], Response::HTTP_NOT_FOUND);
             }
 
             $booking->update([
                 'status_id' => $validated['status_id'],
             ]);
 
-            // $booking = Booking::with(['user', 'status', 'items.product'])->find($booking->id);
-Mail::to($booking->user->email)->send(new BookingStatusUpdatedMail($booking));
-            return response()->json(
-                [
-                    'message' => 'Booking updated successfully',
-                    // 'data' => $booking,
-                ],
-                Response::HTTP_OK,
-            );
+            $email = $booking->user_id ? $booking->user->email : $booking->guest_email;
+            
+            if (!empty($email)) {
+                Mail::to($email)->send(new BookingStatusUpdatedMail($booking));
+            }
+            
+            return response()->json([
+                'message' => 'Booking updated successfully',
+            ], Response::HTTP_OK);
         } catch (\Throwable $e) {
             Log::error('Booking update error: ' . $e->getMessage());
-
-            return response()->json(
-                [
-                    'message' => 'Failed to update booking',
-                ],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-            );
+            return response()->json([
+                'message' => 'Failed to update booking',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
     /**
      * GET /api/bookings/my-bookings
      * Get authenticated user bookings
-     * Search by serial_number or created_at
      */
     public function myBookings(Request $request)
     {
@@ -162,28 +159,20 @@ Mail::to($booking->user->email)->send(new BookingStatusUpdatedMail($booking));
 
             $bookings = $query->latest()->get();
 
-            return response()->json(
-                [
-                    // 'message' => 'My bookings fetched successfully',
-                    'data' => $bookings,
-                ],
-                Response::HTTP_OK,
-            );
+            return response()->json([
+                'data' => $bookings,
+            ], Response::HTTP_OK);
         } catch (\Throwable $e) {
             Log::error('My bookings error: ' . $e->getMessage());
-
-            return response()->json(
-                [
-                    'message' => 'Failed to fetch my bookings',
-                ],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-            );
+            return response()->json([
+                'message' => 'Failed to fetch my bookings',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
     /**
      * GET /api/bookings
      * Admin / Moderator get all bookings
-     * Search by personal_id, serial_number, created_at
      */
     public function index(Request $request)
     {
@@ -192,17 +181,12 @@ Mail::to($booking->user->email)->send(new BookingStatusUpdatedMail($booking));
 
             if ($request->filled('personal_id')) {
                 $user = User::where('personal_id', $request->personal_id)->first();
-
                 if (!$user) {
-                    return response()->json(
-                        [
-                            'message' => 'User not found',
-                            'data' => [],
-                        ],
-                        Response::HTTP_OK,
-                    );
+                    return response()->json([
+                        'message' => 'User not found',
+                        'data' => [],
+                    ], Response::HTTP_OK);
                 }
-
                 $query->where('user_id', $user->id);
             }
 
@@ -214,24 +198,27 @@ Mail::to($booking->user->email)->send(new BookingStatusUpdatedMail($booking));
                 $query->whereDate('created_at', $request->created_at);
             }
 
-            $bookings = $query->latest()->get();
+            $bookings = $query->latest()->get()->map(function($booking) {
+                if (!$booking->user_id) {
+                    $booking->setAttribute('user', [
+                        'name' => $booking->guest_name . ' (אורח)',
+                        'email' => $booking->guest_email,
+                        'personal_id' => $booking->guest_personal_id,
+                        'phone' => $booking->guest_phone,
+                    ]);
+                }
+                return $booking;
+            });
 
-            return response()->json(
-                [
-                    'message' => 'Bookings fetched successfully',
-                    'data' => $bookings,
-                ],
-                Response::HTTP_OK,
-            );
+            return response()->json([
+                'message' => 'Bookings fetched successfully',
+                'data' => $bookings,
+            ], Response::HTTP_OK);
         } catch (\Throwable $e) {
             Log::error('Bookings index error: ' . $e->getMessage());
-
-            return response()->json(
-                [
-                    'message' => 'Failed to fetch bookings',
-                ],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-            );
+            return response()->json([
+                'message' => 'Failed to fetch bookings',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -244,30 +231,29 @@ Mail::to($booking->user->email)->send(new BookingStatusUpdatedMail($booking));
                 ->first();
 
             if (!$booking) {
-                return response()->json(
-                    [
-                        'message' => 'Booking not found',
-                    ],
-                    Response::HTTP_NOT_FOUND,
-                );
+                return response()->json([
+                    'message' => 'Booking not found',
+                ], Response::HTTP_NOT_FOUND);
             }
 
-            return response()->json(
-                [
-                    'message' => 'Booking fetched successfully',
-                    'data' => $booking,
-                ],
-                Response::HTTP_OK,
-            );
+            if (!$booking->user_id) {
+                $booking->setAttribute('user', [
+                    'name' => $booking->guest_name . ' (אורח)',
+                    'email' => $booking->guest_email,
+                    'personal_id' => $booking->guest_personal_id,
+                    'phone' => $booking->guest_phone,
+                ]);
+            }
+
+            return response()->json([
+                'message' => 'Booking fetched successfully',
+                'data' => $booking,
+            ], Response::HTTP_OK);
         } catch (\Throwable $e) {
             Log::error('Booking show error: ' . $e->getMessage());
-
-            return response()->json(
-                [
-                    'message' => 'Failed to fetch booking',
-                ],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-            );
+            return response()->json([
+                'message' => 'Failed to fetch booking',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -280,33 +266,23 @@ Mail::to($booking->user->email)->send(new BookingStatusUpdatedMail($booking));
             $booking = Booking::where('is_deleted', false)->where('id', $id)->first();
 
             if (!$booking) {
-                return response()->json(
-                    [
-                        'message' => 'Booking not found',
-                    ],
-                    Response::HTTP_NOT_FOUND,
-                );
+                return response()->json([
+                    'message' => 'Booking not found',
+                ], Response::HTTP_NOT_FOUND);
             }
 
             $booking->update([
                 'is_deleted' => true,
             ]);
 
-            return response()->json(
-                [
-                    'message' => 'Booking deleted successfully',
-                ],
-                Response::HTTP_OK,
-            );
+            return response()->json([
+                'message' => 'Booking deleted successfully',
+            ], Response::HTTP_OK);
         } catch (\Throwable $e) {
             Log::error('Booking delete error: ' . $e->getMessage());
-
-            return response()->json(
-                [
-                    'message' => 'Failed to delete booking',
-                ],
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-            );
+            return response()->json([
+                'message' => 'Failed to delete booking',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }
